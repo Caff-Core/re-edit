@@ -1,0 +1,30 @@
+name: Task
+description: A task from a milestone tasks.md file
+title: "[NNN.NN] "
+body:
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement and acceptance
+      description: Stable IDs from the spec, for example REQ-001, AC-001. Use "none" for foundation tasks.
+    validations:
+      required: true
+  - type: textarea
+    id: work
+    attributes:
+      label: Work
+      description: What this task delivers.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Acceptance check
+      description: How to verify it, including the platform.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Blocked by
+      description: Issue numbers this task depends on.
