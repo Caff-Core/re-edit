@@ -1,13 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { MarkdownDocument } from "@/features/markdown"
-
+/**
+ * The workspace itself is rendered by the root layout so open documents and
+ * their editors survive navigation; this route only marks it as visible.
+ */
 export const Route = createFileRoute("/")({
   staticData: { title: "Workspace" },
-  component: Workspace,
+  component: () => null,
 })
-
-/** Scratch buffer until file management (003) opens real documents. */
-function Workspace() {
-  return <MarkdownDocument name="Untitled" initialValue="" />
-}

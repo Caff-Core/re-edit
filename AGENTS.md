@@ -29,6 +29,7 @@ src/
     organisms/         Sections such as the file tree and tab strip.
     templates/         Layouts such as the app shell.
   features/<name>/     Document features (markdown, ...). index.ts is the public API.
+  workspace/           Tabs, document identity, save flow, and the DocumentType contract. Feature-neutral.
   services/native/     Typed boundary to the Tauri host. Mirrors src-tauri/src/native.
   lib/  hooks/         Shared, feature-neutral helpers.
   test/                Test setup and fixtures.
@@ -39,6 +40,7 @@ src/
 - Feature-specific components live in `src/features/<name>/components`, not in the shared tiers.
 - Outside a feature, import it only through `@/features/<name>`. Inside a feature, use relative imports.
 - Every file in `src/components` sits in a tier or vendor folder. Every feature has an `index.ts`.
+- A document feature exports a `DocumentType` (see `src/workspace/types.ts`) and is registered in `src/app/document-types.ts`. `src/workspace` never imports a feature. Load the editor with `lazy()` and keep heavy editor modules out of the feature's `index.ts`.
 - Native operations go through `src/services/native`. Never call `invoke` from components or features.
 - Routing uses hash history so every route stays inside the one `index.html` Tauri serves. Give each route `staticData: { title }` for the shell header.
 - A Base UI `Button` given `render={<Link />}` becomes `<a role="button">`. For navigation, style the `Link` with `buttonVariants()` so it stays a link.

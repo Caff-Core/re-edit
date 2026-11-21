@@ -1,7 +1,13 @@
 import { redo, undo } from "@codemirror/commands"
 import { EditorState } from "@codemirror/state"
 import { EditorView, type Command } from "@codemirror/view"
-import { useEffect, useImperativeHandle, useRef, type Ref } from "react"
+import {
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  type Ref,
+} from "react"
 
 import {
   markdownExtensions,
@@ -45,13 +51,16 @@ export function MarkdownEditor({
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const callbacks = useRef({ onChange, onStatusChange, onAnnounce })
+  const refocus = useRef(false)
   const preferences = useEditorPreferences()
 
   useEffect(() => {
     callbacks.current = { onChange, onStatusChange, onAnnounce }
   }, [onChange, onStatusChange, onAnnounce])
 
-  useEffect(() => {
+  // Layout effect: the view must exist before parents read the handle (for
+  // example to focus a newly opened document) in their own layout phase.
+  useLayoutEffect(() => {
     const parent = hostRef.current
     if (!parent) return
     const view = new EditorView({
@@ -62,13 +71,21 @@ export function MarkdownEditor({
           label,
           preferences: getEditorPreferences(),
           onDocChange: (doc) => callbacks.current.onChange?.(doc),
-          onStatusChange: (status) => callbacks.current.onStatusChange?.(status),
+          onStatusChange: (status) =>
+            callbacks.current.onStatusChange?.(status),
           onAnnounce: (message) => callbacks.current.onAnnounce?.(message),
         }),
       }),
     })
     viewRef.current = view
+    // A remount (StrictMode in development, or a new label) replaces the view;
+    // keep focus in the editor if the old view had it.
+    if (refocus.current) {
+      refocus.current = false
+      view.focus()
+    }
     return () => {
+      refocus.current = view.hasFocus
       view.destroy()
       viewRef.current = null
     }

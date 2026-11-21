@@ -10,7 +10,13 @@ import {
   TableIcon,
   Undo2Icon,
 } from "lucide-react"
-import { useCallback, useRef, useState, type ReactNode } from "react"
+import {
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,7 +30,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import type { DocumentEditorProps } from "@/workspace"
 
 import { insertLink, toggleInline } from "../lib/commands/formatting"
 import {
@@ -39,10 +50,7 @@ import type { EditorStatus } from "../lib/extensions"
 import { SHORTCUTS } from "../lib/keymap"
 import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor"
 
-export interface MarkdownDocumentProps {
-  name: string
-  initialValue: string
-}
+export type MarkdownDocumentProps = DocumentEditorProps
 
 /** "Ctrl+Shift+Enter" -> "Control+Shift+Enter" for aria-keyshortcuts. */
 function ariaShortcut(shortcut: string) {
@@ -93,15 +101,50 @@ const bold = toggleInline("**")
 const italic = toggleInline("_")
 const code = toggleInline("`")
 
-/** One open Markdown buffer: a toolbar, the editing surface, and a live region. */
-export function MarkdownDocument({ name, initialValue }: MarkdownDocumentProps) {
+/**
+ * One open Markdown buffer: a toolbar, the editing surface, and a live region.
+ * Implements the workspace editor contract: it owns dirty detection against
+ * the last saved content and serializes the buffer as Markdown text.
+ */
+export function MarkdownDocument({
+  title,
+  initialContent,
+  onDirtyChange,
+  ref,
+}: MarkdownDocumentProps) {
   const editor = useRef<MarkdownEditorHandle>(null)
+  const saved = useRef(initialContent)
+  const dirty = useRef(false)
   const [status, setStatus] = useState<EditorStatus>({
     canUndo: false,
     canRedo: false,
     inTable: false,
   })
   const [announcement, setAnnouncement] = useState("")
+
+  const reportDirty = useCallback(
+    (content: string) => {
+      const next = content !== saved.current
+      if (next !== dirty.current) {
+        dirty.current = next
+        onDirtyChange(next)
+      }
+    },
+    [onDirtyChange]
+  )
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      serialize: () => editor.current?.getValue() ?? saved.current,
+      markSaved: (content) => {
+        saved.current = content
+        reportDirty(editor.current?.getValue() ?? content)
+      },
+      focus: () => editor.current?.focus(),
+    }),
+    [reportDirty]
+  )
 
   const onStatusChange = useCallback((next: EditorStatus) => {
     setStatus((prev) =>
@@ -118,20 +161,35 @@ export function MarkdownDocument({ name, initialValue }: MarkdownDocumentProps) 
   }, [])
 
   const tableItems = [
-    { label: "Add row below", shortcut: SHORTCUTS.addRow, command: addTableRow },
-    { label: "Add column right", shortcut: SHORTCUTS.addColumn, command: addTableColumn },
-    { label: "Delete row", shortcut: SHORTCUTS.deleteRow, command: deleteTableRow },
-    { label: "Delete column", shortcut: SHORTCUTS.deleteColumn, command: deleteTableColumn },
+    {
+      label: "Add row below",
+      shortcut: SHORTCUTS.addRow,
+      command: addTableRow,
+    },
+    {
+      label: "Add column right",
+      shortcut: SHORTCUTS.addColumn,
+      command: addTableColumn,
+    },
+    {
+      label: "Delete row",
+      shortcut: SHORTCUTS.deleteRow,
+      command: deleteTableRow,
+    },
+    {
+      label: "Delete column",
+      shortcut: SHORTCUTS.deleteColumn,
+      command: deleteTableColumn,
+    },
   ]
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
-        <span className="truncate text-sm font-medium">{name}</span>
         <div
           role="toolbar"
           aria-label="Edit"
-          className="ml-auto flex items-center gap-1"
+          className="flex items-center gap-1"
         >
           <ToolbarAction
             label="Undo"
@@ -150,16 +208,32 @@ export function MarkdownDocument({ name, initialValue }: MarkdownDocumentProps) 
             <Redo2Icon aria-hidden="true" />
           </ToolbarAction>
           <Separator orientation="vertical" className="mx-1 h-4" />
-          <ToolbarAction label="Bold" shortcut={SHORTCUTS.bold} onClick={() => runCommand(bold)}>
+          <ToolbarAction
+            label="Bold"
+            shortcut={SHORTCUTS.bold}
+            onClick={() => runCommand(bold)}
+          >
             <BoldIcon aria-hidden="true" />
           </ToolbarAction>
-          <ToolbarAction label="Italic" shortcut={SHORTCUTS.italic} onClick={() => runCommand(italic)}>
+          <ToolbarAction
+            label="Italic"
+            shortcut={SHORTCUTS.italic}
+            onClick={() => runCommand(italic)}
+          >
             <ItalicIcon aria-hidden="true" />
           </ToolbarAction>
-          <ToolbarAction label="Inline code" shortcut={SHORTCUTS.code} onClick={() => runCommand(code)}>
+          <ToolbarAction
+            label="Inline code"
+            shortcut={SHORTCUTS.code}
+            onClick={() => runCommand(code)}
+          >
             <CodeIcon aria-hidden="true" />
           </ToolbarAction>
-          <ToolbarAction label="Link" shortcut={SHORTCUTS.link} onClick={() => runCommand(insertLink)}>
+          <ToolbarAction
+            label="Link"
+            shortcut={SHORTCUTS.link}
+            onClick={() => runCommand(insertLink)}
+          >
             <LinkIcon aria-hidden="true" />
           </ToolbarAction>
           <Separator orientation="vertical" className="mx-1 h-4" />
@@ -186,12 +260,16 @@ export function MarkdownDocument({ name, initialValue }: MarkdownDocumentProps) 
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuItem onClick={() => runCommand(insertTable)}>
                 Insert table
-                <DropdownMenuShortcut>{SHORTCUTS.insertTable}</DropdownMenuShortcut>
+                <DropdownMenuShortcut>
+                  {SHORTCUTS.insertTable}
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuLabel>
-                  {status.inTable ? "Current table" : "Place the cursor in a table"}
+                  {status.inTable
+                    ? "Current table"
+                    : "Place the cursor in a table"}
                 </DropdownMenuLabel>
                 {tableItems.map((item) => (
                   <DropdownMenuItem
@@ -223,8 +301,9 @@ export function MarkdownDocument({ name, initialValue }: MarkdownDocumentProps) 
       </div>
       <MarkdownEditor
         ref={editor}
-        initialValue={initialValue}
-        label={`${name}, Markdown source`}
+        initialValue={initialContent}
+        label={`${title}, Markdown source`}
+        onChange={reportDirty}
         onStatusChange={onStatusChange}
         onAnnounce={setAnnouncement}
       />

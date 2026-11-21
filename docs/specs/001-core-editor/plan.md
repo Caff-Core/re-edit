@@ -6,7 +6,7 @@ Keep CodeMirror extensions inside the Markdown feature. Compose editor controls 
 
 ## Scaffold status
 
-001.01 is in place: keyboard formatting, find and replace, accessible table operations with live announcements, and editor preferences. 001.02 (document registry and tab contract) is not started.
+001.01 and 001.02 are in place. The workspace (`src/workspace`) owns document identity, tab order, titles, dirty display, and saving through a `DocumentStore`. Each document type implements the `DocumentType` contract: its editor reports dirty state and serializes its own content. Markdown registers in `src/app/document-types.ts`; a plain-text type in `src/test/fixtures/document-types` proves the contract in tests. Saving uses an in-memory store until 003 adds the native one.
 
 ## Keyboard map
 
