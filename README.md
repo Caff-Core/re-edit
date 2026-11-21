@@ -9,7 +9,8 @@ An offline Markdown editor for the Linux desktop. Fedora 44 is the first target.
 - Bun for packages and scripts
 - Vitest, Testing Library, and jsdom for frontend tests (`src/**/*.test.{ts,tsx}`, fixtures in `src/test/fixtures`)
 - Tauri 2 desktop shell (Linux first)
-- Planned: TanStack Router, CodeMirror 6 (see milestone 000)
+- TanStack Router (file routes in `src/routes`, hash history)
+- Planned: CodeMirror 6 (see milestone 000)
 
 ## Develop
 
