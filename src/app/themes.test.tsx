@@ -1,5 +1,5 @@
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router"
-import { act, render, screen, within } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -119,6 +119,94 @@ describe("AC-007: theme catalog and preview", () => {
       ["dark", "theme-solarized-dark"].sort()
     )
   })
+})
+
+describe("004.01: preview, dismissal, focus, and persistence across themes", () => {
+  beforeEach(() => {
+    localStorage.clear()
+    html.className = ""
+  })
+
+  it("previews on pointer hover and restores when dismissed by clicking outside", async () => {
+    const user = userEvent.setup()
+    renderSettings()
+    const trigger = await screen.findByRole("button", {
+      name: "Theme: System",
+    })
+    await user.click(trigger)
+    const menu = await screen.findByRole("menu")
+    for (const [name, palette] of [
+      ["Solarized Light", "theme-solarized-light"],
+      ["Default Dark", null],
+      ["Solarized Dark", "theme-solarized-dark"],
+      ["Default Light", null],
+      ["Solarized Dark", "theme-solarized-dark"],
+    ] as const) {
+      await user.hover(within(menu).getByRole("menuitemradio", { name }))
+      if (palette) expect(html).toHaveClass(palette)
+      else expect(html.className).not.toMatch(/theme-/)
+    }
+    await user.click(screen.getByRole("heading", { level: 1 }))
+    expect(screen.queryByRole("menu")).toBeNull()
+    expect([...html.classList]).toEqual(["light"])
+    expect(localStorage.getItem("theme")).toBeNull()
+  })
+
+  it("returns focus to the theme button after Escape and after a commit", async () => {
+    const user = userEvent.setup()
+    renderSettings()
+    const trigger = await screen.findByRole("button", {
+      name: "Theme: System",
+    })
+    act(() => trigger.focus())
+    await user.keyboard("{Enter}")
+    await screen.findByRole("menu")
+    await user.keyboard("{ArrowDown}{ArrowDown}")
+    await user.keyboard("{Escape}")
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect([...html.classList]).toEqual(["light"])
+
+    await user.keyboard("{Enter}")
+    const menu = await screen.findByRole("menu")
+    act(() =>
+      within(menu)
+        .getByRole("menuitemradio", { name: "Solarized Light" })
+        .focus()
+    )
+    await user.keyboard("{Enter}")
+    const committed = await screen.findByRole("button", {
+      name: "Theme: Solarized Light",
+    })
+    await waitFor(() => expect(committed).toHaveFocus())
+  })
+
+  it.each([
+    ["Default Light", "light", ["light"]],
+    ["Default Dark", "dark", ["dark"]],
+    ["Solarized Light", "solarized-light", ["light", "theme-solarized-light"]],
+    ["Solarized Dark", "solarized-dark", ["dark", "theme-solarized-dark"]],
+    ["System", "system", ["light"]],
+  ] as const)(
+    "keeps %s across a restart after previewing others",
+    async (name, stored, classes) => {
+      const user = userEvent.setup()
+      const { unmount } = renderSettings()
+      await user.click(await screen.findByRole("button", { name: /^Theme: / }))
+      const menu = await screen.findByRole("menu")
+      for (const other of ["Solarized Dark", "Default Dark", "Solarized Light"])
+        await user.hover(
+          within(menu).getByRole("menuitemradio", { name: other })
+        )
+      await user.click(within(menu).getByRole("menuitemradio", { name }))
+      expect(localStorage.getItem("theme")).toBe(stored)
+
+      unmount()
+      html.className = ""
+      renderSettings()
+      await screen.findByRole("button", { name: `Theme: ${name}` })
+      expect([...html.classList].sort()).toEqual([...classes].sort())
+    }
+  )
 })
 
 describe("AC-008: motion presets", () => {
