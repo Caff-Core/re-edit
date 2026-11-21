@@ -20,7 +20,11 @@ jobs:
   fedora-rpm:
     name: Fedora 44 RPM
     runs-on: ubuntu-latest
-    container: fedora:44
+    container:
+      image: fedora:44
+      # Chromium's setuid sandbox helper creates namespaces, which needs
+      # CAP_SYS_ADMIN and unshare, both withheld from containers by default.
+      options: --cap-add SYS_ADMIN --security-opt seccomp=unconfined
     steps:
       - name: Install build dependencies
         run: |
