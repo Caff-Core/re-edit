@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+import { getCurrentWindow } from "@tauri-apps/api/window"
 
 import {
   FileError,
   type AppInfo,
+  type AppWindow,
   type FileErrorKind,
   type FileStat,
   type FolderListing,
@@ -34,6 +36,29 @@ async function call<T>(
   }
 }
 
+/** Turns an async subscription into a synchronous stop function. */
+function subscribe(start: Promise<UnlistenFn>): () => void {
+  let stop: UnlistenFn | null = null
+  let stopped = false
+  void start.then((unlisten) => {
+    if (stopped) unlisten()
+    else stop = unlisten
+  })
+  return () => {
+    stopped = true
+    stop?.()
+  }
+}
+
+const appWindow: AppWindow = {
+  minimize: () => getCurrentWindow().minimize(),
+  toggleMaximize: () => getCurrentWindow().toggleMaximize(),
+  close: () => getCurrentWindow().close(),
+  isMaximized: () => getCurrentWindow().isMaximized(),
+  onResized: (listener) =>
+    subscribe(getCurrentWindow().onResized(() => listener())),
+}
+
 export const tauriNativeService: NativeService = {
   isDesktop: true,
   appInfo: () => call<AppInfo>("app_info"),
@@ -47,22 +72,13 @@ export const tauriNativeService: NativeService = {
     call<number>("write_text_file", { path, content, expectedModifiedMs }),
   statFile: (path) => call<FileStat>("stat_file", { path }),
   watchPaths: (paths) => call<void>("watch_paths", { paths }),
-  onFileChanged: (listener) => {
-    let stop: (() => void) | null = null
-    let stopped = false
-    void listen<string>("file-changed", (event) =>
-      listener(event.payload)
-    ).then((unlisten) => {
-      if (stopped) unlisten()
-      else stop = unlisten
-    })
-    return () => {
-      stopped = true
-      stop?.()
-    }
-  },
+  onFileChanged: (listener) =>
+    subscribe(
+      listen<string>("file-changed", (event) => listener(event.payload))
+    ),
   listFolder: (path, extensions) =>
     call<FolderListing>("list_folder", { path, extensions }),
   readDocumentImage: (documentPath, src) =>
     call<ImageData>("read_document_image", { documentPath, src }),
+  window: appWindow,
 }

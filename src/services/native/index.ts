@@ -7,6 +7,7 @@ import type { NativeService } from "./types"
 export { FileError, isConflict } from "./types"
 export type {
   AppInfo,
+  AppWindow,
   FileService,
   FileErrorKind,
   FileStat,
