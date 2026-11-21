@@ -504,7 +504,7 @@ describe("AC-010/AC-011 base: export to HTML and PDF", () => {
     await exportAs(user, "Export as PDF…")
     expect(
       await screen.findByText(
-        "Could not export report.pdf: The PDF could not be rendered. The destination was not changed."
+        "Could not export report.pdf: The PDF could not be rendered (the renderer exited with 1). The destination was not changed."
       )
     ).toBeInTheDocument()
     expect(files.files.get("/out/report.pdf")).toBe("previous export")

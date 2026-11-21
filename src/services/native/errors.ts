@@ -16,8 +16,8 @@ const messages = defineMessages({
     unsaved: "Save the document to show local images.",
     rendererMissing:
       "PDF export needs Chromium. Install it with: sudo dnf install chromium",
-    rendererFailed:
-      "The PDF could not be rendered. The destination was not changed.",
+    rendererFailed: (detail: string) =>
+      `The PDF could not be rendered (${detail}). The destination was not changed.`,
     io: (detail: string) =>
       `The file could not be read or written (${detail}).`,
   },
@@ -31,7 +31,8 @@ const messages = defineMessages({
     unsaved: "请先保存文档，才能显示本地图片。",
     rendererMissing:
       "导出 PDF 需要 Chromium。安装命令：sudo dnf install chromium",
-    rendererFailed: "无法生成 PDF。目标文件未被更改。",
+    rendererFailed: (detail: string) =>
+      `无法生成 PDF（${detail}）。目标文件未被更改。`,
     io: (detail: string) => `无法读取或写入文件（${detail}）。`,
   },
 })
@@ -41,7 +42,9 @@ export type FileErrorMessages = (typeof messages)["en"]
 /** Readable text for an error from a file operation. */
 export function describeError(m: FileErrorMessages, error: unknown): string {
   if (error instanceof FileError) {
-    return error.kind === "io" ? m.io(error.message) : m[error.kind]
+    if (error.kind === "io") return m.io(error.message)
+    if (error.kind === "rendererFailed") return m.rendererFailed(error.message)
+    return m[error.kind]
   }
   return error instanceof Error ? error.message : String(error)
 }
