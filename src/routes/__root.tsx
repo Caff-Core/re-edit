@@ -8,6 +8,7 @@ import {
 import { FilePenLineIcon, PenLineIcon, SettingsIcon } from "lucide-react"
 
 import { AppStatus } from "@/app/app-status"
+import { AppWindowControls } from "@/app/app-window-controls"
 import {
   documentRegistry,
   fileService,
@@ -16,6 +17,7 @@ import {
 import { NotFound } from "@/app/not-found"
 import type { AppSidebarItem } from "@/components/organisms/app-sidebar"
 import { AppShell } from "@/components/templates/app-shell"
+import { nativeService } from "@/services/native"
 import { WorkspaceProvider, WorkspaceView } from "@/workspace"
 
 const BRAND = {
@@ -56,6 +58,7 @@ function RootLayout() {
         activePath={pathname}
         title={title}
         status={<AppStatus />}
+        titleBarEnd={<AppWindowControls appWindow={nativeService.window} />}
       >
         <WorkspaceView hidden={!showWorkspace} />
         <Outlet />
