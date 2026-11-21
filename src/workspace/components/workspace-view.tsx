@@ -251,8 +251,14 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
   )
 
   const notice = workspace.notice ? (
-    <Alert variant="destructive" className="m-2 w-auto">
-      <AlertTitle>Something went wrong</AlertTitle>
+    <Alert
+      variant={workspace.notice.tone === "error" ? "destructive" : "default"}
+      className="m-2 w-auto"
+      role={workspace.notice.tone === "error" ? "alert" : "status"}
+    >
+      {workspace.notice.tone === "error" ? (
+        <AlertTitle>Something went wrong</AlertTitle>
+      ) : null}
       <AlertDescription>{workspace.notice.message}</AlertDescription>
       <AlertAction className="flex gap-2">
         {workspace.notice.retry ? (
@@ -382,6 +388,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             {documents.map((document) => {
               const type = workspace.registry.get(document.typeId)
               const error = workspace.saveErrors[document.id]
+              const conflict = workspace.conflicts[document.id]
               if (!type) return null
               const Editor = type.Editor
               return (
@@ -405,6 +412,57 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                           Retry
                         </Button>
                       </AlertAction>
+                    </Alert>
+                  ) : null}
+                  {conflict ? (
+                    <Alert className="m-2 w-auto">
+                      <AlertTitle>
+                        {conflict.diskContent === null
+                          ? `${document.title} was deleted on disk`
+                          : `${document.title} changed on disk`}
+                      </AlertTitle>
+                      <AlertDescription className="flex flex-col gap-2">
+                        <span>
+                          {conflict.diskContent === null
+                            ? "Your text is kept. Save it to write the file again."
+                            : "Your unsaved edits are kept. Choose which version to keep, or open the disk version beside yours."}
+                        </span>
+                        <span className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => void workspace.keepMine(document.id)}
+                          >
+                            {conflict.diskContent === null
+                              ? "Save my version"
+                              : "Keep my version"}
+                          </Button>
+                          {conflict.diskContent === null ? null : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  workspace.takeDiskVersion(document.id)
+                                }
+                              >
+                                Use disk version
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  workspace.openDiskCopy(document.id)
+                                }
+                              >
+                                Open disk version
+                              </Button>
+                            </>
+                          )}
+                        </span>
+                      </AlertDescription>
                     </Alert>
                   ) : null}
                   <Suspense fallback={<EditorSkeleton />}>

@@ -14,6 +14,11 @@ export interface DocumentEditorHandle {
    * while its content equals it, so edits made during a save stay dirty.
    */
   markSaved(content: string): void
+  /**
+   * Replaces the whole buffer with `content` as one undoable edit and records
+   * `saved` as the saved version (used to load a file changed on disk).
+   */
+  replaceContent(content: string, saved: string): void
   focus(): void
 }
 
@@ -61,4 +66,6 @@ export interface OpenDocument {
   initialContent: string
   savedContent: string
   dirty: boolean
+  /** Modification time of the disk version this tab is based on. */
+  modifiedMs: number | null
 }

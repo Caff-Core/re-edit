@@ -16,6 +16,7 @@ const doc = (id: string, title = id): OpenDocument => ({
   initialContent: "",
   savedContent: "",
   dirty: false,
+  modifiedMs: null,
 })
 
 function open(...ids: string[]): WorkspaceState {

@@ -198,6 +198,12 @@ export function MarkdownDocument({
     ref,
     () => ({
       serialize: () => editor.current?.getValue() ?? saved.current,
+      replaceContent: (content, savedContent) => {
+        saved.current = savedContent
+        editor.current?.replace(content)
+        setContent(content)
+        reportDirty(content)
+      },
       markSaved: (content) => {
         saved.current = content
         reportDirty(editor.current?.getValue() ?? content)

@@ -34,6 +34,11 @@ function PlainTextEditor({
       report(textarea.current?.value ?? content)
     },
     focus: () => textarea.current?.focus(),
+    replaceContent: (content, savedContent) => {
+      saved.current = savedContent
+      if (textarea.current) textarea.current.value = content
+      report(content)
+    },
   }))
 
   return (
