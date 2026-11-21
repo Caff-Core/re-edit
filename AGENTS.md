@@ -12,3 +12,30 @@ This project uses an existing design system: ReUI on shadcn/ui. Keep its look. G
 
 Managed by the ReUI installer. Edits between the markers are replaced on the next run.
 <!-- END:reui-agent-rules -->
+
+## Project structure
+
+Follow the atomic design rules in `docs/.specify/memory/constitution.md`. ESLint (`eslint.config.js`) and `src/components/structure.test.ts` enforce them.
+
+```
+src/
+  app/                 App composition and providers (theme). Routes arrive with TanStack Router.
+  components/
+    ui/                shadcn/ui, installed by the CLI. Do not edit.
+    reui/              ReUI, installed by the CLI. Do not edit.
+    atoms/             Shared primitives that wrap or compose ui/ and reui/.
+    molecules/         Atoms combined around a single interaction.
+    organisms/         Sections such as the file tree and tab strip.
+    templates/         Layouts such as the app shell.
+  features/<name>/     Document features (markdown, ...). index.ts is the public API.
+  services/native/     Typed boundary to the Tauri host. Mirrors src-tauri/src/native.
+  lib/  hooks/         Shared, feature-neutral helpers.
+  test/                Test setup and fixtures.
+```
+
+- A tier imports only lower tiers: templates > organisms > molecules > atoms > ui and reui.
+- Shared components (`src/components/**`) never import a feature. Their props describe data and callbacks, not document types.
+- Feature-specific components live in `src/features/<name>/components`, not in the shared tiers.
+- Outside a feature, import it only through `@/features/<name>`. Inside a feature, use relative imports.
+- Every file in `src/components` sits in a tier or vendor folder. Every feature has an `index.ts`.
+- Native operations go through `src/services/native`. Never call `invoke` from components or features.
