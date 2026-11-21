@@ -1,6 +1,6 @@
 import type { ComponentType, Ref } from "react"
 
-import type { LocalizedText } from "@/lib/i18n"
+import type { Locale, LocalizedText } from "@/lib/i18n"
 
 /**
  * Contract between the workspace and a document feature. The workspace owns
@@ -46,6 +46,23 @@ export interface DocumentEditorProps {
   ref?: Ref<DocumentEditorHandle>
 }
 
+export interface DocumentExportContext {
+  title: string
+  /** Interface language, for any text the export adds. */
+  locale: Locale
+  /** Resolves a local asset to a data URL, as for the preview. */
+  resolveAsset: (src: string) => Promise<string>
+}
+
+/** Turns a document into standalone HTML for HTML and PDF export. */
+export interface DocumentExporter {
+  /** A complete page that embeds everything it shows and loads nothing. */
+  toStandaloneHtml(
+    content: string,
+    context: DocumentExportContext
+  ): Promise<string>
+}
+
 export interface DocumentType {
   /** Stable identifier, for example "markdown". */
   id: string
@@ -57,6 +74,8 @@ export interface DocumentType {
   extensions: string[]
   createEmpty(): string
   Editor: ComponentType<DocumentEditorProps>
+  /** Present when the type can be exported to HTML and PDF. */
+  exporter?: DocumentExporter
 }
 
 export interface OpenDocument {

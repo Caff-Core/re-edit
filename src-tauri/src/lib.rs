@@ -30,6 +30,8 @@ pub fn run() {
             files::pick_open_file,
             files::pick_folder,
             files::pick_save_path,
+            native::export::pick_export_path,
+            native::export::export_pdf,
             files::read_text_file,
             files::write_text_file,
             files::list_folder,

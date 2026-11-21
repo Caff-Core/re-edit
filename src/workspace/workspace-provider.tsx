@@ -15,6 +15,7 @@ import { useLocale } from "@/lib/i18n"
 import {
   FileError,
   isConflict,
+  type ExportFormat,
   type FileService,
   type FolderListing,
 } from "@/services/native"
@@ -82,6 +83,8 @@ export interface WorkspaceApi {
   setDirty(id: string, dirty: boolean): void
   save(id: string): Promise<boolean>
   saveAs(id: string): Promise<boolean>
+  /** Exports to a destination the user picks. False when cancelled or failed. */
+  exportDocument(id: string, format: ExportFormat): Promise<boolean>
   dismissNotice(): void
   noteEdit(id: string): void
   resolveAsset(id: string, src: string): Promise<string>
@@ -633,6 +636,53 @@ export function WorkspaceProvider({
     [resolveAsset]
   )
 
+  const exportDocument = useCallback(
+    async (id: string, format: ExportFormat): Promise<boolean> => {
+      const document = stateRef.current.documents.find((d) => d.id === id)
+      const exporter = document && registry.get(document.typeId)?.exporter
+      const editor = editors.current.get(id)
+      if (!document || !exporter || !editor) return false
+      const base = document.path
+        ? basename(document.path).replace(/\.[^.]+$/, "")
+        : document.title
+      let path: string | null
+      try {
+        path = await files.pickExportPath(`${base}.${format}`, format)
+      } catch (error) {
+        setNotice({
+          tone: "error",
+          message: (t, describe) =>
+            t.couldNotExport(document.title, describe(error)),
+        })
+        return false
+      }
+      if (!path) return false
+      const name = basename(path)
+      try {
+        const html = await exporter.toStandaloneHtml(editor.serialize(), {
+          title: document.title,
+          locale,
+          resolveAsset: (src) => resolveAsset(id, src),
+        })
+        if (format === "pdf") {
+          setNotice({ tone: "info", message: (t) => t.exporting(name) })
+          await files.exportPdf(path, html)
+        } else {
+          await files.writeTextFile(path, html, null)
+        }
+        setNotice({ tone: "info", message: (t) => t.exported(name) })
+        return true
+      } catch (error) {
+        setNotice({
+          tone: "error",
+          message: (t, describe) => t.couldNotExport(name, describe(error)),
+        })
+        return false
+      }
+    },
+    [files, registry, locale, resolveAsset]
+  )
+
   const api = useMemo<WorkspaceApi>(
     () => ({
       registry,
@@ -661,6 +711,7 @@ export function WorkspaceProvider({
       setDirty: (id, dirty) => dispatch({ type: "dirty", id, dirty }),
       save,
       saveAs,
+      exportDocument,
       dismissNotice: () => setNotice(null),
       noteEdit,
       resolveAsset,
@@ -696,6 +747,7 @@ export function WorkspaceProvider({
       openRecent,
       save,
       saveAs,
+      exportDocument,
       noteEdit,
       resolveAsset,
       assetResolver,

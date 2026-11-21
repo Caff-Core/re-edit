@@ -16,6 +16,8 @@ export const browserNativeService: NativeService = {
   pickOpenFile: unavailable,
   pickFolder: unavailable,
   pickSavePath: unavailable,
+  pickExportPath: unavailable,
+  exportPdf: unavailable,
   readTextFile: unavailable,
   writeTextFile: unavailable,
   listFolder: unavailable,

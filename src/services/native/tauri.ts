@@ -67,6 +67,9 @@ export const tauriNativeService: NativeService = {
   pickFolder: () => call<string | null>("pick_folder"),
   pickSavePath: (suggestedName) =>
     call<string | null>("pick_save_path", { suggestedName }),
+  pickExportPath: (suggestedName, format) =>
+    call<string | null>("pick_export_path", { suggestedName, format }),
+  exportPdf: (path, html) => call<number>("export_pdf", { path, html }),
   readTextFile: (path) => call<TextFile>("read_text_file", { path }),
   writeTextFile: (path, content, expectedModifiedMs = null) =>
     call<number>("write_text_file", { path, content, expectedModifiedMs }),

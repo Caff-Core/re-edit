@@ -34,7 +34,7 @@ export interface FileStat {
 }
 
 /**
- * Kinds of file errors. The host reports the first six; "unavailable" (no
+ * Kinds of file errors. The host reports the first eight; "unavailable" (no
  * host, in a plain browser) and "unsaved" (a document with no folder yet)
  * come from the frontend.
  */
@@ -45,6 +45,8 @@ export type FileErrorKind =
   | "notText"
   | "conflict"
   | "io"
+  | "rendererMissing"
+  | "rendererFailed"
   | "unavailable"
   | "unsaved"
 
@@ -61,6 +63,8 @@ export class FileError extends Error {
 export const isConflict = (error: unknown) =>
   error instanceof FileError && error.kind === "conflict"
 
+export type ExportFormat = "html" | "pdf"
+
 export interface ImageData {
   mime: string
   base64: string
@@ -72,6 +76,20 @@ export interface FileService {
   pickOpenFile(extensions: string[]): Promise<string | null>
   pickFolder(): Promise<string | null>
   pickSavePath(suggestedName: string): Promise<string | null>
+  /**
+   * Destination for an export. Adds the format's extension when the name
+   * has none. Returns null when the user cancels.
+   */
+  pickExportPath(
+    suggestedName: string,
+    format: ExportFormat
+  ): Promise<string | null>
+  /**
+   * Renders standalone HTML to a PDF at `path` (from `pickExportPath`) and
+   * returns its modification time. The file is written only when rendering
+   * succeeds.
+   */
+  exportPdf(path: string, html: string): Promise<number>
   readTextFile(path: string): Promise<TextFile>
   /**
    * Writes atomically and returns the new modification time. With
