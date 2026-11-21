@@ -41,7 +41,7 @@ cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings &
 
 - [Constitution](docs/.specify/memory/constitution.md)
 - Feature specs: [docs/specs](docs/specs), one folder per milestone with `spec.md`, `plan.md`, and `tasks.md`
-- UI rules for contributors and agents: [AGENTS.md](AGENTS.md)
+- UI rules and project structure for contributors and agents: [AGENTS.md](AGENTS.md)
 
 ## Workflow
 
