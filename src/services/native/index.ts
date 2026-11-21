@@ -9,6 +9,7 @@ export type {
   FileService,
   FolderEntry,
   FolderListing,
+  ImageData,
   NativeService,
   TextFile,
 } from "./types"

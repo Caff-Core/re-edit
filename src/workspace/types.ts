@@ -28,6 +28,14 @@ export interface DocumentEditorProps {
   onDirtyChange: (dirty: boolean) => void
   /** Called after any edit, so the workspace can store a recovery draft. */
   onEdit: () => void
+  /** Path on disk, or null while the document is untitled. */
+  path: string | null
+  /**
+   * Turns a relative asset reference (for example an image source) into a
+   * data URL, resolved against the document's folder. Rejects with a
+   * readable message when the asset cannot be shown.
+   */
+  resolveAsset: (src: string) => Promise<string>
   ref?: Ref<DocumentEditorHandle>
 }
 

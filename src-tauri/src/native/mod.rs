@@ -7,6 +7,7 @@
 use serde::Serialize;
 
 pub mod files;
+pub mod images;
 
 /// Static facts about the running application.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

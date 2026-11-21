@@ -28,6 +28,11 @@ export interface FolderListing {
   truncated: boolean
 }
 
+export interface ImageData {
+  mime: string
+  base64: string
+}
+
 /** File access through native dialogs, limited to paths the user picked. */
 export interface FileService {
   /** Returns null when the user cancels. */
@@ -38,6 +43,11 @@ export interface FileService {
   /** Returns the new modification time. */
   writeTextFile(path: string, content: string): Promise<number>
   listFolder(path: string, extensions: string[]): Promise<FolderListing>
+  /**
+   * An image referenced by a document, resolved against the document's folder.
+   * Refuses sources outside that folder, non-images, and large files.
+   */
+  readDocumentImage(documentPath: string, src: string): Promise<ImageData>
 }
 
 export interface NativeService extends FileService {

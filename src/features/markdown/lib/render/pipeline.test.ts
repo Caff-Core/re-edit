@@ -61,3 +61,44 @@ describe("markdown render pipeline", () => {
     )
   })
 })
+
+describe("extended GFM fixture", () => {
+  const html = markdownToHtml(markdownFixture("gfm-extended"))
+
+  it("renders strikethrough, autolinks, and hard breaks", () => {
+    expect(html).toContain("<del>Struck through</del>")
+    expect(html).toContain(
+      '<a href="https://example.com">https://example.com</a>'
+    )
+    expect(html).toContain(
+      '<a href="https://example.org">https://example.org</a>'
+    )
+    expect(html).toMatch(/Line one<br>\s*Line two/)
+  })
+
+  it("renders nested lists and escaped pipes in table cells", () => {
+    expect(html).toMatch(/<ol>[\s\S]*<ul>[\s\S]*<ol>/)
+    expect(html).toContain("<code>a | b</code>")
+    expect(html).toMatch(
+      /<td align="center">x \| y<\/td>|<td align="center">x | y<\/td>/
+    )
+  })
+
+  it("drops HTML blocks", () => {
+    expect(html).not.toMatch(/<div|<details|onclick|steal\(\)/)
+  })
+})
+
+describe("images fixture", () => {
+  const html = markdownToHtml(markdownFixture("images"))
+
+  it("keeps relative and remote sources for the preview to resolve", () => {
+    expect(html).toContain('src="img/dot.png"')
+    expect(html).toContain('src="../secret.png"')
+    expect(html).toContain('src="https://example.com/photo.png"')
+  })
+
+  it("removes unsafe image sources", () => {
+    expect(html).not.toContain("javascript:")
+  })
+})
