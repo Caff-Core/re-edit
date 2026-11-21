@@ -21,4 +21,5 @@ export const browserNativeService: NativeService = {
   statFile: unavailable,
   watchPaths: async () => {},
   onFileChanged: () => () => {},
+  window: null,
 }

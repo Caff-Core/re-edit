@@ -85,8 +85,21 @@ export interface FileService {
   readDocumentImage(documentPath: string, src: string): Promise<ImageData>
 }
 
+/** The app's own window, driven by the custom title bar. */
+export interface AppWindow {
+  minimize(): Promise<void>
+  toggleMaximize(): Promise<void>
+  /** Requests a close; close-requested handlers still run. */
+  close(): Promise<void>
+  isMaximized(): Promise<boolean>
+  /** Calls `listener` after the window changes size, maximize included. */
+  onResized(listener: () => void): () => void
+}
+
 export interface NativeService extends FileService {
   /** True when running inside the Tauri shell, false in a plain browser. */
   readonly isDesktop: boolean
   appInfo(): Promise<AppInfo>
+  /** Null in a plain browser, where the page has no window to control. */
+  readonly window: AppWindow | null
 }

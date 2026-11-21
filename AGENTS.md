@@ -44,6 +44,7 @@ src/
 - Native operations go through `src/services/native`. Never call `invoke` from components or features.
 - Routing uses hash history so every route stays inside the one `index.html` Tauri serves. Give each route `staticData: { title }` for the shell header.
 - A Base UI `Button` given `render={<Link />}` becomes `<a role="button">`. For navigation, style the `Link` with `buttonVariants()` so it stays a link.
+- The window has no system decorations (`decorations: false`). The AppShell header is the title bar: `data-tauri-drag-region="deep"` drags from anywhere in it except buttons and links. Window operations go through `nativeService.window`, which is null in a plain browser.
 - `SidebarProvider` toggles the sidebar on Ctrl/Cmd+B at the window. Editor keymaps that bind Mod-b must stop propagation.
 - CodeMirror extensions stay inside `src/features/markdown/lib`. Theme the editor with CSS variables (`var(--foreground)`), never fixed colors, and keep Tab unbound so focus can leave the editor.
 - CodeMirror UI strings go through `src/features/markdown/lib/phrases.ts` (`EditorState.phrases`), so localization covers built-in panels.
