@@ -1,12 +1,20 @@
 import type { Root } from "hast"
 import { toJsxRuntime } from "hast-util-to-jsx-runtime"
-import { useDeferredValue, useMemo, type MouseEvent } from "react"
+import {
+  useDeferredValue,
+  useMemo,
+  type ComponentProps,
+  type MouseEvent,
+} from "react"
 import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
+import { MERMAID_CLASS } from "../lib/render/mermaid-blocks"
 import { markdownToHast } from "../lib/render/pipeline"
+import { MermaidDiagram } from "./mermaid-diagram"
 import { PreviewImage } from "./preview-image"
+import "katex/dist/katex.min.css"
 import "../lib/render/markdown.css"
 
 type RenderResult = { tree: Root; error: null } | { tree: null; error: string }
@@ -31,6 +39,16 @@ export function MarkdownPreview({
       img: (props: { src?: string; alt?: string; title?: string }) => (
         <PreviewImage key={props.src} {...props} load={loadImage} />
       ),
+      figure: ({
+        className,
+        "data-source": source,
+        ...props
+      }: ComponentProps<"figure"> & { "data-source"?: string }) =>
+        className === MERMAID_CLASS && source !== undefined ? (
+          <MermaidDiagram source={source} />
+        ) : (
+          <figure className={className} {...props} />
+        ),
     }),
     [loadImage]
   )

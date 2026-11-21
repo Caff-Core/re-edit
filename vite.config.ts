@@ -37,9 +37,10 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-    // Assets load from disk inside Tauri, not over a network. The editor route
-    // carries CodeMirror and the HTML, CSS, and JS grammars lang-markdown embeds.
-    chunkSizeWarningLimit: 800,
+    // Assets load from disk inside Tauri, not over a network. App chunks stay
+    // near 600 kB; the limit sits above Mermaid's lazy layout engines (ELK is
+    // about 1.5 MB), which load only for diagrams that use them.
+    chunkSizeWarningLimit: 1600,
   },
   test: {
     environment: "jsdom",

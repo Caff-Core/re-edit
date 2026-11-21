@@ -10,6 +10,20 @@ import { markdownFixture } from "@/test/fixtures"
 
 import { MarkdownDocument } from "./components/markdown-document"
 
+vi.mock("mermaid", () => ({
+  default: {
+    initialize: () => {},
+    parse: async (source: string) => {
+      if (source.trim().endsWith("-->"))
+        throw new Error("Parse error on line 2")
+      return true
+    },
+    render: async () => ({
+      svg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    }),
+  },
+}))
+
 const DOT = "data:image/png;base64,iVBORw=="
 
 /** Resolves only img/dot.png, like a document folder holding one image. */
@@ -353,5 +367,35 @@ describe("002.01: local images in the preview", () => {
         name: "Dot: Save the document to show local images",
       })
     ).toBeInTheDocument()
+  })
+})
+
+describe("002.02: math and diagrams in the preview", () => {
+  it("renders math, diagrams with text alternatives, and readable errors", async () => {
+    const user = userEvent.setup()
+    renderDocument(markdownFixture("math-diagrams"))
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    const preview = await screen.findByRole("article")
+
+    expect(
+      preview.querySelectorAll(".katex math").length
+    ).toBeGreaterThanOrEqual(2)
+    expect(preview.querySelector(".katex-error")).toHaveTextContent(
+      "\\frac{1}{"
+    )
+
+    const diagram = await within(preview).findByRole("img", {
+      name: "Diagram: Release flow",
+    })
+    expect(diagram.getAttribute("src")).toMatch(/^data:image\/svg\+xml/)
+    expect(
+      await within(preview).findByRole("img", {
+        name: "Diagram could not be drawn: Parse error on line 2",
+      })
+    ).toBeInTheDocument()
+    const sources = within(preview).getAllByText("Diagram source")
+    expect(sources).toHaveLength(2)
+    expect(sources[1].closest("details")).toHaveAttribute("open")
+    expect(preview.querySelector("script, foreignObject")).toBeNull()
   })
 })
