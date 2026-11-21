@@ -107,3 +107,18 @@
   padding: 0.25rem 0.5rem;
 }
 .markdown-body .md-image-note svg { flex-shrink: 0; height: 0.875rem; width: 0.875rem; }
+
+/* Math. KaTeX's own styles load with the preview; errors use theme tokens. */
+.markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25rem 0; }
+.markdown-body .katex-error {
+  color: var(--destructive) !important;
+  font-family: var(--font-mono);
+  text-decoration: underline wavy;
+}
+
+/* Mermaid diagrams. */
+.markdown-body .md-mermaid { margin: 0 0 1em; }
+.markdown-body .md-mermaid img { display: block; max-width: 100%; }
+.markdown-body .md-mermaid details { color: var(--muted-foreground); font-size: 0.75rem; margin-top: 0.25rem; }
+.markdown-body .md-mermaid details pre { margin: 0.25rem 0 0; }
+.markdown-body .md-mermaid .md-image-note > span { white-space: pre-wrap; }

@@ -9,6 +9,7 @@ describe("markdown fixtures", () => {
       "empty",
       "gfm-extended",
       "images",
+      "math-diagrams",
     ])
   })
 
@@ -21,7 +22,7 @@ describe("markdown fixtures", () => {
 
   it("throws with the available names for an unknown fixture", () => {
     expect(() => markdownFixture("missing")).toThrow(
-      'Unknown markdown fixture "missing". Available: basic, empty, gfm-extended, images'
+      'Unknown markdown fixture "missing". Available: basic, empty, gfm-extended, images, math-diagrams'
     )
   })
 })

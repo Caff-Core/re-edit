@@ -102,3 +102,35 @@ describe("images fixture", () => {
     expect(html).not.toContain("javascript:")
   })
 })
+
+describe("math and diagrams fixture", () => {
+  const html = markdownToHtml(markdownFixture("math-diagrams"))
+
+  it("renders inline and display math with MathML for screen readers", () => {
+    expect(html).toContain('<span class="katex">')
+    expect(html).toContain('<span class="katex-display">')
+    expect(html).toContain("<math")
+    expect(html).toContain(
+      '<annotation encoding="application/x-tex">E = mc^2</annotation>'
+    )
+  })
+
+  it("shows broken math inline with the parse error", () => {
+    expect(html).toMatch(
+      /<span class="katex-error" title="ParseError: KaTeX parse error[^"]*"/
+    )
+  })
+
+  it("turns mermaid blocks into diagram placeholders with their source", () => {
+    expect(html).toContain(
+      '<figure class="md-mermaid" data-source="graph TD\n  accTitle: Release flow'
+    )
+    expect(html).not.toContain("language-mermaid")
+  })
+
+  it("keeps math input inert", () => {
+    expect(markdownToHtml("$<script>alert(1)</script>$")).not.toContain(
+      "<script"
+    )
+  })
+})
