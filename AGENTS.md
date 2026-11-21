@@ -44,3 +44,5 @@ src/
 - A Base UI `Button` given `render={<Link />}` becomes `<a role="button">`. For navigation, style the `Link` with `buttonVariants()` so it stays a link.
 - `SidebarProvider` toggles the sidebar on Ctrl/Cmd+B at the window. Editor keymaps that bind Mod-b must stop propagation.
 - CodeMirror extensions stay inside `src/features/markdown/lib`. Theme the editor with CSS variables (`var(--foreground)`), never fixed colors, and keep Tab unbound so focus can leave the editor.
+- CodeMirror UI strings go through `src/features/markdown/lib/phrases.ts` (`EditorState.phrases`), so localization covers built-in panels.
+- To stop a key the editor owns from reaching window listeners, use `EditorView.domEventObservers`; `domEventHandlers` are skipped once a keymap handles the key.
