@@ -7,6 +7,7 @@ An offline Markdown editor for the Linux desktop. Fedora 44 is the first target.
 - React 19, Vite, TypeScript
 - shadcn/ui (Base UI) with the ReUI registry, Tailwind CSS 4
 - Bun for packages and scripts
+- Vitest, Testing Library, and jsdom for frontend tests (`src/**/*.test.{ts,tsx}`, fixtures in `src/test/fixtures`)
 - Tauri 2 desktop shell (Linux first)
 - Planned: TanStack Router, CodeMirror 6 (see milestone 000)
 
@@ -31,6 +32,7 @@ Checks run in CI on every pull request:
 ```bash
 bun run lint
 bun run typecheck
+bun run test
 bun run build
 cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
