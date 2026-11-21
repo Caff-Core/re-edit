@@ -165,6 +165,40 @@
     --motion-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/*
+ * Presets on the installed surfaces (menus, dialogs, tooltips, sheets, the
+ * sidebar). Their files stay as shipped; Normal keeps their timing exactly.
+ * tw-animate-css reads --tw-duration, --tw-ease, and the --tw-enter-* and
+ * --tw-exit-* travel variables, so the presets adjust those.
+ */
+:root[data-motion="none"] *,
+:root[data-motion="none"] *::before,
+:root[data-motion="none"] *::after {
+    /* Runs once and ends at its final frame, so loops (a blinking caret,
+       a pulsing skeleton) hold still instead of flickering. */
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+:root[data-motion="subtle"] :is([class*="animate-in"], [class*="animate-out"]) {
+    /* Fade only: no zoom, slide, or blur. */
+    --tw-enter-scale: 1 !important;
+    --tw-exit-scale: 1 !important;
+    --tw-enter-translate-x: 0 !important;
+    --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: 0 !important;
+    --tw-exit-translate-y: 0 !important;
+    --tw-enter-blur: 0 !important;
+    --tw-exit-blur: 0 !important;
+}
+:root[data-motion="bouncy"] :is([class*="animate-in"], [class*="animate-out"]) {
+    --tw-duration: var(--motion-duration) !important;
+    --tw-ease: var(--motion-ease) !important;
+}
+
 /* Theme changes cross-fade through a view transition (opacity only). */
 ::view-transition-old(root),
 ::view-transition-new(root) {
