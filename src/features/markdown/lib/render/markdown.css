@@ -1,0 +1,96 @@
+/*
+ * Document styles shared by the preview and HTML export. Built on the app's
+ * semantic tokens, so every theme applies. Export embeds this file with the
+ * token values of the active theme.
+ */
+.markdown-body {
+  --md-syntax-keyword: #6d28d9;
+  --md-syntax-string: #047857;
+  --md-syntax-number: #0369a1;
+  --md-syntax-title: #b45309;
+  --md-syntax-comment: #71717a;
+
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+/* Categorical syntax colors: AA contrast on both theme backgrounds. */
+.dark .markdown-body {
+  --md-syntax-keyword: #c4b5fd;
+  --md-syntax-string: #6ee7b7;
+  --md-syntax-number: #7dd3fc;
+  --md-syntax-title: #fcd34d;
+  --md-syntax-comment: #a1a1aa;
+}
+
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+
+.markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.5em 0 0.5em;
+}
+.markdown-body h1 { font-size: 1.5rem; }
+.markdown-body h2 { font-size: 1.25rem; }
+.markdown-body h3 { font-size: 1.125rem; }
+.markdown-body :is(h4, h5, h6) { font-size: 1rem; }
+
+.markdown-body :is(p, ul, ol, blockquote, pre, table, hr) { margin: 0 0 1em; }
+.markdown-body :is(ul, ol) { padding-left: 1.5em; }
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
+.markdown-body li > :is(ul, ol) { margin: 0.25em 0 0; }
+.markdown-body li + li { margin-top: 0.25em; }
+.markdown-body .contains-task-list { list-style: none; padding-left: 0.25em; }
+.markdown-body .task-list-item input { margin: 0 0.5em 0 0; vertical-align: middle; accent-color: var(--primary); }
+
+.markdown-body a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.markdown-body a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
+
+.markdown-body blockquote {
+  border-left: 3px solid var(--border);
+  color: var(--muted-foreground);
+  padding-left: 1em;
+}
+
+.markdown-body :not(pre) > code {
+  background: var(--muted);
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+}
+
+.markdown-body pre {
+  background: var(--muted);
+  border-radius: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+}
+
+.markdown-body table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
+.markdown-body :is(th, td) { border: 1px solid var(--border); padding: 0.375rem 0.75rem; }
+.markdown-body th { font-weight: 600; background: var(--muted); }
+
+.markdown-body hr { border: 0; border-top: 1px solid var(--border); }
+.markdown-body img { max-width: 100%; height: auto; }
+
+.markdown-body .footnotes { border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 0.8125rem; margin-top: 2em; padding-top: 1em; }
+.markdown-body .sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+.markdown-body .hljs-comment, .markdown-body .hljs-quote { color: var(--md-syntax-comment); font-style: italic; }
+.markdown-body :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type) { color: var(--md-syntax-keyword); }
+.markdown-body :is(.hljs-string, .hljs-regexp, .hljs-attr, .hljs-symbol) { color: var(--md-syntax-string); }
+.markdown-body :is(.hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable) { color: var(--md-syntax-number); }
+.markdown-body :is(.hljs-title, .hljs-section, .hljs-name, .hljs-function) { color: var(--md-syntax-title); }
