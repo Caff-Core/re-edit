@@ -37,10 +37,29 @@
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png",
       "icons/icon.png"
     ],
-    "category": "Office",
-    "shortDescription": "Offline Markdown editor"
+    "category": "Productivity",
+    "shortDescription": "Offline Markdown editor",
+    "longDescription": "An offline Markdown editor for the Linux desktop with live preview and PDF and HTML export.",
+    "license": "MIT",
+    "homepage": "https://github.com/Caff-Core/re-edit",
+    "linux": {
+      "rpm": {
+        "release": "1",
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3",
+          "libsoup3",
+          "javascriptcoregtk4.1"
+        ]
+      },
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ]
+      }
+    }
   }
 }
