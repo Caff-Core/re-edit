@@ -9,7 +9,9 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { nativeService } from "@/services/native"
 
 function renderApp(path: string) {
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
+  const router = createAppRouter(
+    createMemoryHistory({ initialEntries: [path] })
+  )
   render(
     <ThemeProvider>
       <TooltipProvider>
@@ -33,16 +35,39 @@ describe("app shell routes", () => {
   it("renders the workspace inside the shell", async () => {
     renderApp("/")
     await pageTitle("Workspace")
-    expect(
-      await screen.findByRole("textbox", { name: "Untitled, Markdown source" })
-    ).toBeInTheDocument()
+    expect(screen.getByText("No document open")).toBeInTheDocument()
 
     const nav = screen.getByRole("navigation", { name: "Primary" })
-    expect(within(nav).getByRole("link", { name: "Workspace" })).toBeInTheDocument()
-    expect(within(nav).getByRole("link", { name: "Settings" })).toBeInTheDocument()
+    expect(
+      within(nav).getByRole("link", { name: "Workspace" })
+    ).toBeInTheDocument()
+    expect(
+      within(nav).getByRole("link", { name: "Settings" })
+    ).toBeInTheDocument()
 
     const status = screen.getByRole("contentinfo", { name: "Status" })
-    expect(await within(status).findByText("re-edit dev · browser")).toBeInTheDocument()
+    expect(
+      await within(status).findByText("re-edit dev · browser")
+    ).toBeInTheDocument()
+  })
+
+  it("keeps open documents when visiting settings and coming back", async () => {
+    const user = userEvent.setup()
+    renderApp("/")
+    await user.click(
+      await screen.findByRole("button", { name: "New Markdown document" })
+    )
+    const editor = await screen.findByRole("textbox", {
+      name: "Untitled, Markdown source",
+    })
+    const nav = screen.getByRole("navigation", { name: "Primary" })
+    await user.click(within(nav).getByRole("link", { name: "Settings" }))
+    await pageTitle("Settings")
+    await user.click(within(nav).getByRole("link", { name: "Workspace" }))
+    await pageTitle("Workspace")
+    expect(
+      screen.getByRole("textbox", { name: "Untitled, Markdown source" })
+    ).toBe(editor)
   })
 
   it("navigates to settings from the sidebar", async () => {
@@ -59,7 +84,9 @@ describe("app shell routes", () => {
     const router = renderApp("/does-not-exist")
     await pageTitle("Not found")
     expect(screen.getByText("Page not found")).toBeInTheDocument()
-    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("navigation", { name: "Primary" })
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole("link", { name: "Back to workspace" }))
     await pageTitle("Workspace")
@@ -81,9 +108,16 @@ describe("app shell routes", () => {
   it("keeps Ctrl+B in the editor for bold instead of toggling the sidebar", async () => {
     const user = userEvent.setup()
     renderApp("/")
-    const editor = await screen.findByRole("textbox", { name: "Untitled, Markdown source" })
+    await user.click(
+      await screen.findByRole("button", { name: "New Markdown document" })
+    )
+    const editor = await screen.findByRole("textbox", {
+      name: "Untitled, Markdown source",
+    })
     const sidebarState = () =>
-      document.querySelector('[data-slot="sidebar"]')?.getAttribute("data-state")
+      document
+        .querySelector('[data-slot="sidebar"]')
+        ?.getAttribute("data-state")
     expect(sidebarState()).toBe("expanded")
 
     editor.focus()
@@ -106,10 +140,14 @@ describe("app shell routes", () => {
     await pageTitle("Workspace")
 
     const status = screen.getByRole("contentinfo", { name: "Status" })
-    expect(await within(status).findByText("Version unavailable.")).toBeInTheDocument()
+    expect(
+      await within(status).findByText("Version unavailable.")
+    ).toBeInTheDocument()
 
     await user.click(within(status).getByRole("button", { name: "Retry" }))
-    expect(await within(status).findByText("re-edit dev · browser")).toBeInTheDocument()
+    expect(
+      await within(status).findByText("re-edit dev · browser")
+    ).toBeInTheDocument()
     expect(appInfo).toHaveBeenCalledTimes(2)
   })
 })
