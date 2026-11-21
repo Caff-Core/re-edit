@@ -14,4 +14,11 @@ export const markdownDocumentType: DocumentType = {
       default: module.MarkdownDocument,
     }))
   ),
+  // The render pipeline loads on first export, like the preview.
+  exporter: {
+    toStandaloneHtml: (content, context) =>
+      import("./lib/render/exporter").then((module) =>
+        module.exportMarkdown(content, context)
+      ),
+  },
 }
