@@ -28,6 +28,28 @@ export interface FolderListing {
   truncated: boolean
 }
 
+export interface FileStat {
+  exists: boolean
+  modifiedMs: number
+}
+
+/** Kinds of file errors reported by the host. */
+export type FileErrorKind =
+  "outsideScope" | "notFound" | "tooLarge" | "notText" | "conflict" | "io"
+
+/** A file operation failure with the host's error kind. */
+export class FileError extends Error {
+  readonly kind: FileErrorKind
+  constructor(kind: FileErrorKind, message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = "FileError"
+    this.kind = kind
+  }
+}
+
+export const isConflict = (error: unknown) =>
+  error instanceof FileError && error.kind === "conflict"
+
 export interface ImageData {
   mime: string
   base64: string
@@ -40,8 +62,21 @@ export interface FileService {
   pickFolder(): Promise<string | null>
   pickSavePath(suggestedName: string): Promise<string | null>
   readTextFile(path: string): Promise<TextFile>
-  /** Returns the new modification time. */
-  writeTextFile(path: string, content: string): Promise<number>
+  /**
+   * Writes atomically and returns the new modification time. With
+   * `expectedModifiedMs`, fails with a "conflict" FileError when the file on
+   * disk is not that version.
+   */
+  writeTextFile(
+    path: string,
+    content: string,
+    expectedModifiedMs?: number | null
+  ): Promise<number>
+  statFile(path: string): Promise<FileStat>
+  /** Replaces the set of watched files (paths of open documents). */
+  watchPaths(paths: string[]): Promise<void>
+  /** Calls `listener` with the path of a watched file that changed. */
+  onFileChanged(listener: (path: string) => void): () => void
   listFolder(path: string, extensions: string[]): Promise<FolderListing>
   /**
    * An image referenced by a document, resolved against the document's folder.

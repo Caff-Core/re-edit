@@ -11,6 +11,7 @@ export type WorkspaceAction =
   | { type: "activate"; id: string }
   | { type: "dirty"; id: string; dirty: boolean }
   | { type: "rename"; id: string; path: string; title: string }
+  | { type: "modified"; id: string; modifiedMs: number | null }
 
 export const initialWorkspaceState: WorkspaceState = {
   documents: [],
@@ -48,6 +49,13 @@ export function workspaceReducer(
           d.id === action.id
             ? { ...d, path: action.path, title: action.title }
             : d
+        ),
+      }
+    case "modified":
+      return {
+        ...state,
+        documents: state.documents.map((d) =>
+          d.id === action.id ? { ...d, modifiedMs: action.modifiedMs } : d
         ),
       }
     case "dirty": {

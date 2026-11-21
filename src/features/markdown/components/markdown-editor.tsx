@@ -23,6 +23,8 @@ export interface MarkdownEditorHandle {
   execute(command: Command): boolean
   focus(): void
   getValue(): string
+  /** Replaces the whole document as one undoable change. */
+  replace(content: string): void
 }
 
 export interface MarkdownEditorProps {
@@ -109,6 +111,14 @@ export function MarkdownEditor({
       redo: () => execute(redo),
       execute,
       focus: () => viewRef.current?.focus(),
+      replace: (content: string) => {
+        const view = viewRef.current
+        if (!view || view.state.doc.toString() === content) return
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: content },
+          userEvent: "input.replace",
+        })
+      },
       getValue: () => viewRef.current?.state.doc.toString() ?? "",
     }
   }, [])

@@ -1,9 +1,11 @@
-import type {
-  FileService,
-  FolderEntry,
-  FolderListing,
-  ImageData,
-  TextFile,
+import {
+  FileError,
+  type FileService,
+  type FileStat,
+  type FolderEntry,
+  type FolderListing,
+  type ImageData,
+  type TextFile,
 } from "@/services/native"
 
 function parentOf(path: string) {
@@ -37,6 +39,10 @@ export class MemoryFileService implements FileService {
     null
   /** Number of upcoming writes that fail. */
   failWrites = 0
+  /** Modification time per file; advances on every write. */
+  readonly modified = new Map<string, number>()
+  readonly watched = new Set<string>()
+  private readonly listeners = new Set<(path: string) => void>()
   private clock = 1
 
   constructor(files: Record<string, string> = {}) {
@@ -61,16 +67,66 @@ export class MemoryFileService implements FileService {
   async readTextFile(path: string): Promise<TextFile> {
     const content = this.files.get(path)
     if (content === undefined) throw new Error(`${path} does not exist`)
-    return { content, modifiedMs: this.clock }
+    return { content, modifiedMs: this.modified.get(path) ?? 1 }
   }
 
-  async writeTextFile(path: string, content: string) {
+  async statFile(path: string): Promise<FileStat> {
+    return this.files.has(path)
+      ? { exists: true, modifiedMs: this.modified.get(path) ?? 1 }
+      : { exists: false, modifiedMs: 0 }
+  }
+
+  async watchPaths(paths: string[]) {
+    this.watched.clear()
+    for (const path of paths) this.watched.add(path)
+  }
+
+  onFileChanged(listener: (path: string) => void) {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  /** Another program writes the file (or deletes it with null). */
+  externalWrite(path: string, content: string | null) {
+    if (content === null) {
+      this.files.delete(path)
+      this.modified.delete(path)
+    } else {
+      this.files.set(path, content)
+      this.modified.set(path, ++this.clock)
+    }
+    if (this.watched.has(path))
+      this.listeners.forEach((listener) => listener(path))
+  }
+
+  async writeTextFile(
+    path: string,
+    content: string,
+    expectedModifiedMs: number | null = null
+  ) {
     if (this.failWrites > 0) {
       this.failWrites--
-      throw new Error(`${path}: permission denied`)
+      throw new FileError("io", `${path}: permission denied`)
+    }
+    if (
+      expectedModifiedMs !== null &&
+      (!this.files.has(path) ||
+        (this.modified.get(path) ?? 1) !== expectedModifiedMs)
+    ) {
+      throw new FileError(
+        "conflict",
+        `${path} changed on disk since it was opened`
+      )
     }
     this.files.set(path, content)
-    return ++this.clock
+    const modified = ++this.clock
+    this.modified.set(path, modified)
+    // Like inotify, the app's own writes are reported too.
+    if (this.watched.has(path))
+      this.listeners.forEach((listener) => listener(path))
+    return modified
   }
 
   /** Same rules as the native command; image files hold base64 content. */

@@ -322,3 +322,111 @@ describe("002.01: images next to an opened file", () => {
     ).toBeInTheDocument()
   })
 })
+
+describe("AC-006: changes on disk keep both versions; failed writes keep the buffer", () => {
+  async function openA(files: MemoryFileService) {
+    files.nextOpenFile = "/n/a.md"
+    renderWorkspace(files)
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Open file" }))
+    return markdownView("a.md")
+  }
+
+  it("turns a dirty tab into a conflict, opens the disk version beside it, and keeps mine", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    typeInto(view, " mine")
+
+    act(() => files.externalWrite("/n/a.md", "# A theirs"))
+    expect(await screen.findByText("a.md changed on disk")).toBeInTheDocument()
+    expect(view.state.doc.toString()).toBe("# A mine")
+
+    await user.click(screen.getByRole("button", { name: "Open disk version" }))
+    const disk = await markdownView("a.md (on disk)")
+    expect(disk.state.doc.toString()).toBe("# A theirs")
+
+    await user.click(tab("a.md, unsaved changes"))
+    await user.click(screen.getByRole("button", { name: "Keep my version" }))
+    await waitFor(() =>
+      expect(screen.queryByText("a.md changed on disk")).not.toBeInTheDocument()
+    )
+    expect(files.files.get("/n/a.md")).toBe("# A mine")
+    expect(tab("a.md")).toBeInTheDocument()
+  })
+
+  it("reloads a clean tab that changed on disk and says so", async () => {
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    act(() => files.externalWrite("/n/a.md", "# A updated"))
+    expect(
+      await screen.findByText("Reloaded a.md because it changed on disk.")
+    ).toBeInTheDocument()
+    expect(view.state.doc.toString()).toBe("# A updated")
+    expect(tab("a.md")).toBeInTheDocument()
+  })
+
+  it("loads the disk version as an undoable change", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    typeInto(view, " mine")
+    act(() => files.externalWrite("/n/a.md", "# A theirs"))
+    await user.click(
+      await screen.findByRole("button", { name: "Use disk version" })
+    )
+    expect(view.state.doc.toString()).toBe("# A theirs")
+    await waitFor(() => expect(tab("a.md")).toBeInTheDocument())
+
+    view.focus()
+    await user.keyboard("{Control>}z{/Control}")
+    expect(view.state.doc.toString()).toBe("# A mine")
+    expect(tab("a.md, unsaved changes")).toBeInTheDocument()
+  })
+
+  it("refuses to save over a newer disk version even without a change event", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    typeInto(view, " mine")
+    // Another program writes while the watcher is not looking.
+    files.files.set("/n/a.md", "# A theirs")
+    files.modified.set("/n/a.md", 99)
+
+    await user.keyboard("{Control>}s{/Control}")
+    expect(await screen.findByText("a.md changed on disk")).toBeInTheDocument()
+    expect(files.files.get("/n/a.md")).toBe("# A theirs")
+    expect(view.state.doc.toString()).toBe("# A mine")
+  })
+
+  it("does not treat the app's own saves as changes on disk", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    typeInto(view, "!")
+    await user.keyboard("{Control>}s{/Control}")
+    await waitFor(() => expect(tab("a.md")).toBeInTheDocument())
+    typeInto(view, "?")
+    await user.keyboard("{Control>}s{/Control}")
+    await waitFor(() => expect(files.files.get("/n/a.md")).toBe("# A!?"))
+    expect(screen.queryByText(/changed on disk/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Reloaded/)).not.toBeInTheDocument()
+  })
+
+  it("keeps the text of a file deleted on disk and can write it again", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    typeInto(view, " kept")
+    act(() => files.externalWrite("/n/a.md", null))
+    expect(
+      await screen.findByText("a.md was deleted on disk")
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Save my version" }))
+    await waitFor(() => expect(files.files.get("/n/a.md")).toBe("# A kept"))
+    expect(
+      screen.queryByText("a.md was deleted on disk")
+    ).not.toBeInTheDocument()
+  })
+})

@@ -29,6 +29,8 @@ pub enum FileError {
     NotFound(String),
     TooLarge(String),
     NotText(String),
+    /// The file changed on disk since the version the editor knows.
+    Conflict(String),
     Io(String),
 }
 
@@ -176,11 +178,104 @@ pub fn read_text(path: &Path) -> Result<TextFile, FileError> {
     })
 }
 
-pub fn write_text(path: &Path, content: &str) -> Result<u64, FileError> {
-    open_no_follow(path, true)?
-        .write_all(content.as_bytes())
-        .map_err(|e| FileError::io(path, e))?;
-    Ok(modified_ms(path))
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStat {
+    pub exists: bool,
+    pub modified_ms: u64,
+}
+
+pub fn stat(path: &Path) -> FileStat {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_file() => FileStat {
+            exists: true,
+            modified_ms: modified_ms(path),
+        },
+        _ => FileStat {
+            exists: false,
+            modified_ms: 0,
+        },
+    }
+}
+
+static TEMP_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Writes `content` atomically: a temporary file in the same folder is
+/// written, flushed to disk, given the target's permissions, and renamed over
+/// the target. A failure at any step leaves the target as it was.
+///
+/// With `expected_modified_ms`, the write is refused with
+/// [`FileError::Conflict`] when the file on disk is not the version the editor
+/// last read or wrote.
+pub fn write_text(
+    path: &Path,
+    content: &str,
+    expected_modified_ms: Option<u64>,
+) -> Result<u64, FileError> {
+    // Commands pass canonical paths, so a symlink here means one was swapped
+    // in after the scope check. Never replace or follow it.
+    if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err(FileError::OutsideScope(format!(
+            "{} is a symbolic link",
+            path.display()
+        )));
+    }
+    if let Some(expected) = expected_modified_ms {
+        let current = stat(path);
+        if !current.exists || current.modified_ms != expected {
+            return Err(FileError::Conflict(format!(
+                "{} changed on disk since it was opened",
+                path.display()
+            )));
+        }
+    }
+    let folder = path
+        .parent()
+        .ok_or_else(|| FileError::NotFound(path.display().to_string()))?;
+    let name = path
+        .file_name()
+        .ok_or_else(|| FileError::NotFound(path.display().to_string()))?
+        .to_string_lossy();
+    let sequence = TEMP_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let temp = folder.join(format!(
+        ".{name}.re-edit-{}-{sequence}.tmp",
+        std::process::id()
+    ));
+    let result = (|| {
+        use std::os::unix::fs::OpenOptionsExt;
+        // An existing file keeps its permissions. The temporary file starts
+        // owner-only and takes the target's mode before any content is
+        // written, so a private document is never readable by others, even
+        // briefly. A new file gets the usual 0666 minus the umask.
+        let target_permissions = fs::metadata(path).ok().map(|m| m.permissions());
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(if target_permissions.is_some() {
+                0o600
+            } else {
+                0o666
+            })
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(&temp)
+            .map_err(|e| FileError::io(path, e))?;
+        if let Some(permissions) = target_permissions {
+            file.set_permissions(permissions)
+                .map_err(|e| FileError::io(path, e))?;
+        }
+        file.write_all(content.as_bytes())
+            .map_err(|e| FileError::io(path, e))?;
+        file.sync_all().map_err(|e| FileError::io(path, e))?;
+        fs::rename(&temp, path).map_err(|e| FileError::io(path, e))?;
+        if let Ok(dir) = fs::File::open(folder) {
+            let _ = dir.sync_all();
+        }
+        Ok(modified_ms(path))
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temp);
+    }
+    result
 }
 
 /// Opens `path` without following a symlink in its last component, so a link
@@ -337,8 +432,18 @@ pub async fn write_text_file(
     scope: State<'_, FileScope>,
     path: String,
     content: String,
+    expected_modified_ms: Option<u64>,
 ) -> Result<u64, FileError> {
-    write_text(&scope.check(Path::new(&path))?, &content)
+    write_text(
+        &scope.check(Path::new(&path))?,
+        &content,
+        expected_modified_ms,
+    )
+}
+
+#[tauri::command]
+pub async fn stat_file(scope: State<'_, FileScope>, path: String) -> Result<FileStat, FileError> {
+    Ok(stat(&scope.check(Path::new(&path))?))
 }
 
 #[tauri::command]
@@ -423,7 +528,7 @@ mod tests {
         ));
         // Even with the check bypassed, the write refuses to follow the link.
         assert!(matches!(
-            write_text(&dir.path().join("dangling.md"), "x"),
+            write_text(&dir.path().join("dangling.md"), "x", None),
             Err(FileError::OutsideScope(_))
         ));
         assert!(!outside.exists());
@@ -465,10 +570,87 @@ mod tests {
     }
 
     #[test]
+    fn atomic_write_keeps_permissions_and_leaves_no_temp_files() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tree();
+        let path = dir.path().join("readme.md");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
+        let modified = write_text(&path, "new", None).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "new");
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o640
+        );
+        assert_eq!(stat(&path).modified_ms, modified);
+        let leftovers = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_name().to_string_lossy().contains("re-edit-"))
+            .count();
+        assert_eq!(leftovers, 0);
+    }
+
+    #[test]
+    fn atomic_write_keeps_private_files_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tree();
+        let path = dir.path().join("private.md");
+        fs::write(&path, "secret").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        write_text(&path, "still secret", None).unwrap();
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // A new file follows the umask like any other created file.
+        let fresh = dir.path().join("fresh.md");
+        write_text(&fresh, "new", None).unwrap();
+        let mode = fs::metadata(&fresh).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode & 0o600, 0o600);
+        assert_eq!(mode & 0o111, 0);
+    }
+
+    #[test]
+    fn write_refuses_when_the_file_changed_on_disk() {
+        let dir = tree();
+        let path = dir.path().join("readme.md");
+        let known = stat(&path).modified_ms;
+        // Another program rewrites the file with a later modification time.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        fs::write(&path, "theirs").unwrap();
+        assert!(matches!(
+            write_text(&path, "mine", Some(known)),
+            Err(FileError::Conflict(_))
+        ));
+        assert_eq!(fs::read_to_string(&path).unwrap(), "theirs");
+        let current = stat(&path).modified_ms;
+        assert!(write_text(&path, "mine", Some(current)).is_ok());
+        assert!(matches!(
+            write_text(&dir.path().join("gone.md"), "x", Some(1)),
+            Err(FileError::Conflict(_))
+        ));
+    }
+
+    #[test]
+    fn failed_write_leaves_the_original_untouched() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tree();
+        let folder = dir.path().join("locked");
+        fs::create_dir(&folder).unwrap();
+        let path = folder.join("doc.md");
+        fs::write(&path, "original").unwrap();
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o500)).unwrap();
+        let result = write_text(&path, "lost?", None);
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(matches!(result, Err(FileError::Io(_))));
+        assert_eq!(fs::read_to_string(&path).unwrap(), "original");
+    }
+
+    #[test]
     fn read_and_write_round_trip_and_reject_binary() {
         let dir = tree();
         let path = dir.path().join("readme.md");
-        write_text(&path, "updated").unwrap();
+        write_text(&path, "updated", None).unwrap();
         assert_eq!(read_text(&path).unwrap().content, "updated");
         fs::write(dir.path().join("bad.md"), [0xff, 0xfe, 0x00]).unwrap();
         assert!(matches!(
