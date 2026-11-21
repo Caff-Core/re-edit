@@ -2,12 +2,22 @@ import type {
   FileService,
   FolderEntry,
   FolderListing,
+  ImageData,
   TextFile,
 } from "@/services/native"
 
 function parentOf(path: string) {
   const index = path.lastIndexOf("/")
   return index <= 0 ? "/" : path.slice(0, index)
+}
+
+const IMAGE_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
 }
 
 function nameOf(path: string) {
@@ -61,6 +71,26 @@ export class MemoryFileService implements FileService {
     }
     this.files.set(path, content)
     return ++this.clock
+  }
+
+  /** Same rules as the native command; image files hold base64 content. */
+  async readDocumentImage(
+    documentPath: string,
+    src: string
+  ): Promise<ImageData> {
+    const outside = new Error(`${src} is outside the document's folder`)
+    const clean = decodeURIComponent(src.split(/[?#]/)[0] ?? "")
+    if (!clean || clean.includes(":") || clean.startsWith("/")) throw outside
+    const parts = clean.split("/").filter((p) => p !== "" && p !== ".")
+    if (parts.includes("..")) throw outside
+    const path = `${parentOf(documentPath)}/${parts.join("/")}`
+    const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase()
+    const mime = IMAGE_TYPES[extension]
+    if (!mime) throw new Error(`${src} is not a supported image type`)
+    const base64 = this.files.get(path)
+    if (base64 === undefined)
+      throw new Error(`${src} was not found next to the document`)
+    return { mime, base64 }
   }
 
   async listFolder(root: string, extensions: string[]): Promise<FolderListing> {

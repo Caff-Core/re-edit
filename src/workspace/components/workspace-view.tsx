@@ -417,6 +417,8 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                         workspace.setDirty(document.id, dirty)
                       }
                       onEdit={() => workspace.noteEdit(document.id)}
+                      path={document.path}
+                      resolveAsset={workspace.assetResolver(document.id)}
                       ref={(handle) => {
                         workspace.registerEditor(document.id, handle)
                         return () => workspace.registerEditor(document.id, null)

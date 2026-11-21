@@ -1,6 +1,12 @@
 import { invoke } from "@tauri-apps/api/core"
 
-import type { AppInfo, FolderListing, NativeService, TextFile } from "./types"
+import type {
+  AppInfo,
+  FolderListing,
+  ImageData,
+  NativeService,
+  TextFile,
+} from "./types"
 
 /** Rust FileError arrives as { kind, message }; surface it as an Error. */
 async function call<T>(
@@ -13,7 +19,9 @@ async function call<T>(
       : invoke<T>(command, args))
   } catch (error) {
     if (error && typeof error === "object" && "message" in error) {
-      throw new Error(String((error as { message: unknown }).message), { cause: error })
+      throw new Error(String((error as { message: unknown }).message), {
+        cause: error,
+      })
     }
     throw new Error(String(error), { cause: error })
   }
@@ -32,4 +40,6 @@ export const tauriNativeService: NativeService = {
     call<number>("write_text_file", { path, content }),
   listFolder: (path, extensions) =>
     call<FolderListing>("list_folder", { path, extensions }),
+  readDocumentImage: (documentPath, src) =>
+    call<ImageData>("read_document_image", { documentPath, src }),
 }

@@ -60,6 +60,9 @@ export interface WorkspaceApi {
   saveAs(id: string): Promise<boolean>
   dismissNotice(): void
   noteEdit(id: string): void
+  resolveAsset(id: string, src: string): Promise<string>
+  /** A stable resolver bound to one document, for editors to memoize on. */
+  assetResolver(id: string): (src: string) => Promise<string>
   registerEditor(id: string, handle: DocumentEditorHandle | null): void
 }
 
@@ -390,6 +393,33 @@ export function WorkspaceProvider({
     })()
   }, [session, registry, files, openDocument, openFolder, persistSession])
 
+  const resolveAsset = useCallback(
+    async (id: string, src: string) => {
+      const document = stateRef.current.documents.find((d) => d.id === id)
+      if (!document?.path) {
+        throw new Error("Save the document to show local images")
+      }
+      const image = await files.readDocumentImage(document.path, src)
+      return `data:${image.mime};base64,${image.base64}`
+    },
+    [files]
+  )
+
+  const assetResolvers = useRef(
+    new Map<string, (src: string) => Promise<string>>()
+  )
+  const assetResolver = useCallback(
+    (id: string) => {
+      let resolver = assetResolvers.current.get(id)
+      if (!resolver) {
+        resolver = (src: string) => resolveAsset(id, src)
+        assetResolvers.current.set(id, resolver)
+      }
+      return resolver
+    },
+    [resolveAsset]
+  )
+
   const api = useMemo<WorkspaceApi>(
     () => ({
       registry,
@@ -415,6 +445,8 @@ export function WorkspaceProvider({
       saveAs,
       dismissNotice: () => setNotice(null),
       noteEdit,
+      resolveAsset,
+      assetResolver,
       registerEditor: (id, handle) => {
         if (!handle) {
           editors.current.delete(id)
@@ -443,6 +475,8 @@ export function WorkspaceProvider({
       save,
       saveAs,
       noteEdit,
+      resolveAsset,
+      assetResolver,
     ]
   )
 

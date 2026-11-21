@@ -17,4 +17,5 @@ export const browserNativeService: NativeService = {
   readTextFile: unavailable,
   writeTextFile: unavailable,
   listFolder: unavailable,
+  readDocumentImage: unavailable,
 }
