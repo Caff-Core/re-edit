@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router"
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 
 import { useTheme } from "@/app/providers/theme-provider"
+import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { EditorPreferencesForm } from "@/features/markdown"
 
 export const Route = createFileRoute("/settings")({
   staticData: { title: "Settings" },
@@ -52,6 +54,18 @@ function Settings() {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+      </section>
+      <Separator />
+      <section aria-labelledby="editor-heading" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 id="editor-heading" className="text-sm font-medium">
+            Editor
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Changes apply to open documents right away.
+          </p>
+        </div>
+        <EditorPreferencesForm />
       </section>
     </div>
   )

@@ -81,3 +81,56 @@ describe("MarkdownDocument", () => {
     expect(view.state.doc.toString()).toBe("text")
   })
 })
+
+describe("AC-001: format, replace, edit a table, then undo and redo by keyboard", () => {
+  it("runs the whole flow on the sample document", async () => {
+    const user = userEvent.setup()
+    const source = markdownFixture("basic")
+    const { surface, view } = renderDocument(source)
+    const doc = () => view.state.doc.toString()
+
+    // Format selected text with Ctrl+B.
+    const word = source.indexOf("paragraph")
+    surface.focus()
+    act(() => {
+      view.dispatch({ selection: { anchor: word, head: word + "paragraph".length } })
+    })
+    await user.keyboard("{Control>}b{/Control}")
+    expect(doc()).toContain("A **paragraph** with")
+
+    // Replace a term with Ctrl+F and Replace all.
+    await user.keyboard("{Control>}f{/Control}")
+    const find = await screen.findByRole("textbox", { name: "Find" })
+    await user.clear(find)
+    await user.type(find, "Bullet")
+    await user.type(screen.getByRole("textbox", { name: "Replace" }), "Item")
+    await user.click(screen.getByRole("button", { name: /replace all/i }))
+    expect(doc()).toContain("- Item one")
+    expect(doc()).not.toContain("Bullet")
+    await user.keyboard("{Escape}")
+
+    // Edit the table: add a row below "one" with Ctrl+Enter.
+    const cell = doc().indexOf("| one")
+    act(() => {
+      view.dispatch({ selection: { anchor: cell + 2 } })
+    })
+    view.focus()
+    await user.keyboard("{Control>}{Enter}{/Control}")
+    const edited = doc()
+    expect(edited).toMatch(/\| one\s+\|\s+1 \|\n\|\s+\|\s+\|\n\| two/)
+    expect(screen.getByRole("status")).toHaveTextContent("Row added, row 2, column 1")
+
+    // Undo everything with Ctrl+Z, then redo everything with Ctrl+Y.
+    const undoButton = screen.getByRole("button", { name: "Undo" })
+    for (let i = 0; i < 10 && !undoButton.hasAttribute("disabled"); i++) {
+      await user.keyboard("{Control>}z{/Control}")
+    }
+    expect(doc()).toBe(source)
+
+    const redoButton = screen.getByRole("button", { name: "Redo" })
+    for (let i = 0; i < 10 && !redoButton.hasAttribute("disabled"); i++) {
+      await user.keyboard("{Control>}y{/Control}")
+    }
+    expect(doc()).toBe(edited)
+  })
+})

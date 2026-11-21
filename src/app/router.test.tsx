@@ -78,6 +78,25 @@ describe("app shell routes", () => {
     )
   })
 
+  it("keeps Ctrl+B in the editor for bold instead of toggling the sidebar", async () => {
+    const user = userEvent.setup()
+    renderApp("/")
+    const editor = await screen.findByRole("textbox", { name: "Untitled, Markdown source" })
+    const sidebarState = () =>
+      document.querySelector('[data-slot="sidebar"]')?.getAttribute("data-state")
+    expect(sidebarState()).toBe("expanded")
+
+    editor.focus()
+    await user.keyboard("{Control>}b{/Control}")
+    expect(sidebarState()).toBe("expanded")
+    expect(editor.textContent).toContain("****")
+
+    // Control case: outside the editor the shortcut still toggles the sidebar.
+    editor.blur()
+    await user.keyboard("{Control>}b{/Control}")
+    expect(sidebarState()).toBe("collapsed")
+  })
+
   it("shows an inline error with Retry when the host cannot report its version", async () => {
     const user = userEvent.setup()
     const appInfo = vi
