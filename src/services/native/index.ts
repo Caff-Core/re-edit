@@ -10,6 +10,7 @@ export { FileError, isConflict } from "./types"
 export type {
   AppInfo,
   AppWindow,
+  ExportFormat,
   FileService,
   FileErrorKind,
   FileStat,

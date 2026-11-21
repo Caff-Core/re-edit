@@ -14,6 +14,10 @@ const messages = defineMessages({
     conflict: "The file changed on disk after it was opened.",
     unavailable: "Files are available in the desktop app.",
     unsaved: "Save the document to show local images.",
+    rendererMissing:
+      "PDF export needs Chromium. Install it with: sudo dnf install chromium",
+    rendererFailed:
+      "The PDF could not be rendered. The destination was not changed.",
     io: (detail: string) =>
       `The file could not be read or written (${detail}).`,
   },
@@ -25,6 +29,9 @@ const messages = defineMessages({
     conflict: "文件在打开后已在磁盘上被修改。",
     unavailable: "文件功能仅在桌面应用中可用。",
     unsaved: "请先保存文档，才能显示本地图片。",
+    rendererMissing:
+      "导出 PDF 需要 Chromium。安装命令：sudo dnf install chromium",
+    rendererFailed: "无法生成 PDF。目标文件未被更改。",
     io: (detail: string) => `无法读取或写入文件（${detail}）。`,
   },
 })
