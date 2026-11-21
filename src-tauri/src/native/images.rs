@@ -90,6 +90,15 @@ pub fn resolve(document: &Path, src: &str) -> Result<PathBuf, FileError> {
 }
 
 pub fn read_image(document: &Path, src: &str) -> Result<ImageData, FileError> {
+    // The base folder comes from a real document. A folder (for example a
+    // scope root) or a path that does not exist would move the base up a
+    // level, outside what the user granted.
+    if !fs::metadata(document).is_ok_and(|m| m.is_file()) {
+        return Err(FileError::OutsideScope(format!(
+            "{} is not an open document",
+            document.display()
+        )));
+    }
     let path = resolve(document, src)?;
     let mime = mime_for(&path)
         .ok_or_else(|| FileError::NotText(format!("{src} is not a supported image type")))?;
@@ -180,6 +189,22 @@ mod tests {
             read_image(&document, "link.png"),
             Err(FileError::OutsideScope(_))
         ));
+    }
+
+    #[test]
+    fn refuses_a_folder_or_missing_file_as_the_document() {
+        let (dir, document) = folder();
+        let docs = document.parent().unwrap();
+        // Passing the folder itself would make its parent the image base.
+        assert!(matches!(
+            read_image(docs, "secret.png"),
+            Err(FileError::OutsideScope(_))
+        ));
+        assert!(matches!(
+            read_image(&docs.join("not-there.md"), "img/dot.png"),
+            Err(FileError::OutsideScope(_))
+        ));
+        assert!(dir.path().join("secret.png").exists());
     }
 
     #[test]
