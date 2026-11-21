@@ -18,6 +18,7 @@ import {
   Suspense,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -54,6 +55,7 @@ import {
   insertTable,
 } from "../lib/commands/table"
 import type { EditorStatus } from "../lib/extensions"
+import { createImageLoader } from "../lib/render/image-loader"
 import { SHORTCUTS } from "../lib/keymap"
 import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor"
 
@@ -156,6 +158,8 @@ export function MarkdownDocument({
   savedContent,
   onDirtyChange,
   onEdit,
+  path,
+  resolveAsset,
   ref,
 }: MarkdownDocumentProps) {
   const editor = useRef<MarkdownEditorHandle>(null)
@@ -171,6 +175,13 @@ export function MarkdownDocument({
   const [announcement, setAnnouncement] = useState("")
   const [content, setContent] = useState(initialContent)
   const [mode, setMode] = useState<ViewMode>("editor")
+
+  // Each image source resolves once per document location; the workspace
+  // gives a stable resolver per document, and a Save As starts a new cache.
+  const loadImage = useMemo(
+    () => createImageLoader(path, resolveAsset),
+    [path, resolveAsset]
+  )
 
   const reportDirty = useCallback(
     (content: string) => {
@@ -408,7 +419,11 @@ export function MarkdownDocument({
             }
           >
             <Suspense fallback={<PreviewSkeleton />}>
-              <MarkdownPreview source={content} title={title} />
+              <MarkdownPreview
+                source={content}
+                title={title}
+                loadImage={loadImage}
+              />
             </Suspense>
           </section>
         )}

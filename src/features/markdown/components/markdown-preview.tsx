@@ -6,6 +6,7 @@ import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 import { markdownToHast } from "../lib/render/pipeline"
+import { PreviewImage } from "./preview-image"
 import "../lib/render/markdown.css"
 
 type RenderResult = { tree: Root; error: null } | { tree: null; error: string }
@@ -17,11 +18,22 @@ type RenderResult = { tree: Root; error: null } | { tree: null; error: string }
 export function MarkdownPreview({
   source,
   title,
+  loadImage,
 }: {
   source: string
   title: string
+  /** Resolves a relative image source to a data URL (cached by the caller). */
+  loadImage: (src: string) => Promise<string>
 }) {
   const deferred = useDeferredValue(source)
+  const components = useMemo(
+    () => ({
+      img: (props: { src?: string; alt?: string; title?: string }) => (
+        <PreviewImage key={props.src} {...props} load={loadImage} />
+      ),
+    }),
+    [loadImage]
+  )
 
   const result = useMemo<RenderResult>(() => {
     try {
@@ -70,7 +82,9 @@ export function MarkdownPreview({
           className="markdown-body max-w-[80ch] px-6 py-4"
           onClick={onClick}
         >
-          {tree ? toJsxRuntime(tree, { Fragment, jsx, jsxs }) : null}
+          {tree
+            ? toJsxRuntime(tree, { Fragment, jsx, jsxs, components })
+            : null}
         </article>
       )}
     </div>

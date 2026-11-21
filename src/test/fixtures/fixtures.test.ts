@@ -4,7 +4,12 @@ import { markdownFixture, markdownFixtureNames } from "./index"
 
 describe("markdown fixtures", () => {
   it("lists every fixture file", () => {
-    expect(markdownFixtureNames()).toEqual(["basic", "empty"])
+    expect(markdownFixtureNames()).toEqual([
+      "basic",
+      "empty",
+      "gfm-extended",
+      "images",
+    ])
   })
 
   it("returns raw file contents", () => {
@@ -16,7 +21,7 @@ describe("markdown fixtures", () => {
 
   it("throws with the available names for an unknown fixture", () => {
     expect(() => markdownFixture("missing")).toThrow(
-      'Unknown markdown fixture "missing". Available: basic, empty'
+      'Unknown markdown fixture "missing". Available: basic, empty, gfm-extended, images'
     )
   })
 })

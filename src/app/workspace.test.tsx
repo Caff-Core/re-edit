@@ -297,3 +297,28 @@ describe("AC-005: open a folder, edit two files, switch tabs, cancel a close, re
     await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(1))
   })
 })
+
+describe("002.01: images next to an opened file", () => {
+  it("loads sibling images through the workspace and refuses escapes", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({
+      "/notes/a.md": "![Dot](img/dot.png) ![Escape](../secret.png)",
+      "/notes/img/dot.png": "iVBORw==",
+      "/secret.png": "c2VjcmV0",
+    })
+    files.nextOpenFile = "/notes/a.md"
+    renderWorkspace(files)
+    await user.click(await screen.findByRole("button", { name: "Open file" }))
+    await markdownView("a.md")
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    expect(await screen.findByRole("img", { name: "Dot" })).toHaveAttribute(
+      "src",
+      "data:image/png;base64,iVBORw=="
+    )
+    expect(
+      await screen.findByRole("img", {
+        name: "Escape: ../secret.png is outside the document's folder",
+      })
+    ).toBeInTheDocument()
+  })
+})

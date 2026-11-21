@@ -10,7 +10,17 @@ import { markdownFixture } from "@/test/fixtures"
 
 import { MarkdownDocument } from "./components/markdown-document"
 
-function renderDocument(initialContent = "") {
+const DOT = "data:image/png;base64,iVBORw=="
+
+/** Resolves only img/dot.png, like a document folder holding one image. */
+async function fakeResolve(src: string) {
+  if (src === "img/dot.png") return DOT
+  if (src.startsWith(".."))
+    throw new Error(`${src} is outside the document's folder`)
+  throw new Error(`${src} was not found next to the document`)
+}
+
+function renderDocument(initialContent = "", resolveAsset = fakeResolve) {
   const onDirtyChange = vi.fn()
   const handle = createRef<DocumentEditorHandle>()
   render(
@@ -23,6 +33,8 @@ function renderDocument(initialContent = "") {
         savedContent={initialContent}
         onDirtyChange={onDirtyChange}
         onEdit={() => {}}
+        path="/docs/a.md"
+        resolveAsset={resolveAsset}
       />
     </TooltipProvider>
   )
@@ -132,6 +144,8 @@ describe("view re-creation", () => {
       savedContent: "x",
       onDirtyChange: () => {},
       onEdit: () => {},
+      path: null,
+      resolveAsset: fakeResolve,
     }
     const { rerender } = render(
       <TooltipProvider>
@@ -281,6 +295,63 @@ describe("AC-003: editor, preview, and split modes", () => {
     await user.click(screen.getByRole("button", { name: "Split" }))
     expect(
       await screen.findByText("Nothing to preview yet.")
+    ).toBeInTheDocument()
+  })
+})
+
+describe("002.01: local images in the preview", () => {
+  it("shows sibling images and explains the ones it cannot show", async () => {
+    const user = userEvent.setup()
+    renderDocument(markdownFixture("images"))
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    const preview = await screen.findByRole("article")
+
+    expect(
+      await within(preview).findByRole("img", { name: "Dot" })
+    ).toHaveAttribute("src", DOT)
+    expect(
+      await within(preview).findByRole("img", {
+        name: "Missing: img/missing.png was not found next to the document",
+      })
+    ).toBeInTheDocument()
+    expect(
+      await within(preview).findByRole("img", {
+        name: "Escape: ../secret.png is outside the document's folder",
+      })
+    ).toBeInTheDocument()
+    expect(
+      within(preview).getByRole("img", {
+        name: "Remote: Remote image from example.com is not loaded.",
+      })
+    ).toBeInTheDocument()
+    expect(
+      preview.querySelector('img[src^="http"], img[src^="javascript"]')
+    ).toBeNull()
+  })
+
+  it("resolves each source once while the text changes", async () => {
+    const user = userEvent.setup()
+    const resolve = vi.fn(fakeResolve)
+    const { view } = renderDocument("![Dot](img/dot.png)", resolve)
+    await user.click(screen.getByRole("button", { name: "Split" }))
+    await screen.findByRole("img", { name: "Dot" })
+    type(view, "\n\nMore text")
+    await waitFor(() =>
+      expect(screen.getByRole("article")).toHaveTextContent("More text")
+    )
+    expect(resolve).toHaveBeenCalledTimes(1)
+  })
+
+  it("passes through the reason an untitled document cannot show images", async () => {
+    const user = userEvent.setup()
+    renderDocument("![Dot](img/dot.png)", () =>
+      Promise.reject(new Error("Save the document to show local images"))
+    )
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    expect(
+      await screen.findByRole("img", {
+        name: "Dot: Save the document to show local images",
+      })
     ).toBeInTheDocument()
   })
 })
