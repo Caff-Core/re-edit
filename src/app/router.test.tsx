@@ -33,7 +33,9 @@ describe("app shell routes", () => {
   it("renders the workspace inside the shell", async () => {
     renderApp("/")
     await pageTitle("Workspace")
-    expect(screen.getByText("No document open")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("textbox", { name: "Untitled, Markdown source" })
+    ).toBeInTheDocument()
 
     const nav = screen.getByRole("navigation", { name: "Primary" })
     expect(within(nav).getByRole("link", { name: "Workspace" })).toBeInTheDocument()
@@ -43,10 +45,11 @@ describe("app shell routes", () => {
     expect(await within(status).findByText("re-edit dev · browser")).toBeInTheDocument()
   })
 
-  it("navigates to settings from the workspace empty state", async () => {
+  it("navigates to settings from the sidebar", async () => {
     const user = userEvent.setup()
     const router = renderApp("/")
-    await user.click(await screen.findByRole("link", { name: "Open settings" }))
+    const nav = await screen.findByRole("navigation", { name: "Primary" })
+    await user.click(within(nav).getByRole("link", { name: "Settings" }))
     await pageTitle("Settings")
     expect(router.state.location.pathname).toBe("/settings")
   })

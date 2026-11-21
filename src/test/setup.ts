@@ -22,3 +22,10 @@ if (!window.matchMedia) {
     }),
   })
 }
+
+// jsdom does no layout. CodeMirror measures ranges, so return empty rects.
+const emptyRect = () => new DOMRect(0, 0, 0, 0)
+const emptyRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList
+if (!Range.prototype.getBoundingClientRect) Range.prototype.getBoundingClientRect = emptyRect
+if (!Range.prototype.getClientRects) Range.prototype.getClientRects = emptyRects
+if (!document.elementFromPoint) document.elementFromPoint = () => null
