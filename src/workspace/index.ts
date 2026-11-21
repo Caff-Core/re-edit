@@ -1,16 +1,24 @@
-export { WorkspaceView } from "./components/workspace-view"
+export { FILE_SHORTCUTS, WorkspaceView } from "./components/workspace-view"
+export { MemoryFileService } from "./memory-files"
+export { basename } from "./paths"
 export { createDocumentRegistry, type DocumentRegistry } from "./registry"
-export { MemoryDocumentStore } from "./store"
+export {
+  localSessionStore,
+  MemorySessionStore,
+  type RecentEntry,
+  type Session,
+  type SessionStore,
+} from "./session"
 export type {
   DocumentEditorHandle,
   DocumentEditorProps,
-  DocumentRef,
-  DocumentStore,
   DocumentType,
   OpenDocument,
 } from "./types"
 export {
-  WorkspaceProvider,
+  DRAFT_DELAY_MS,
   useWorkspace,
+  WorkspaceProvider,
+  type FolderState,
   type WorkspaceApi,
 } from "./workspace-provider"

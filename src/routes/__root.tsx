@@ -8,7 +8,11 @@ import {
 import { FilePenLineIcon, PenLineIcon, SettingsIcon } from "lucide-react"
 
 import { AppStatus } from "@/app/app-status"
-import { documentRegistry, documentStore } from "@/app/document-types"
+import {
+  documentRegistry,
+  fileService,
+  sessionStore,
+} from "@/app/document-types"
 import { NotFound } from "@/app/not-found"
 import type { AppSidebarItem } from "@/components/organisms/app-sidebar"
 import { AppShell } from "@/components/templates/app-shell"
@@ -41,7 +45,11 @@ function RootLayout() {
   const showWorkspace = !notFound && leaf.routeId === "/"
 
   return (
-    <WorkspaceProvider registry={documentRegistry} store={documentStore}>
+    <WorkspaceProvider
+      registry={documentRegistry}
+      files={fileService}
+      session={sessionStore}
+    >
       <AppShell
         brand={BRAND}
         nav={NAV}

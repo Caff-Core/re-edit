@@ -153,12 +153,16 @@ const code = toggleInline("`")
 export function MarkdownDocument({
   title,
   initialContent,
+  savedContent,
   onDirtyChange,
+  onEdit,
   ref,
 }: MarkdownDocumentProps) {
   const editor = useRef<MarkdownEditorHandle>(null)
-  const saved = useRef(initialContent)
-  const dirty = useRef(false)
+  const saved = useRef(savedContent)
+  // A recovered draft starts different from its file, so it starts dirty;
+  // the workspace already shows it as dirty.
+  const dirty = useRef(initialContent !== savedContent)
   const [status, setStatus] = useState<EditorStatus>({
     canUndo: false,
     canRedo: false,
@@ -196,8 +200,9 @@ export function MarkdownDocument({
     (next: string) => {
       setContent(next)
       reportDirty(next)
+      onEdit()
     },
-    [reportDirty]
+    [reportDirty, onEdit]
   )
 
   const onStatusChange = useCallback((next: EditorStatus) => {

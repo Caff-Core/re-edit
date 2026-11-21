@@ -12,7 +12,9 @@ const doc = (id: string, title = id): OpenDocument => ({
   id,
   typeId: "markdown",
   title,
+  path: null,
   initialContent: "",
+  savedContent: "",
   dirty: false,
 })
 
@@ -59,6 +61,16 @@ describe("workspace state", () => {
     expect(
       workspaceReducer(dirty, { type: "dirty", id: "a", dirty: true })
     ).toBe(dirty)
+  })
+
+  it("renames a document after Save As", () => {
+    const state = workspaceReducer(open("a"), {
+      type: "rename",
+      id: "a",
+      path: "/n/a.md",
+      title: "a.md",
+    })
+    expect(state.documents[0]).toMatchObject({ path: "/n/a.md", title: "a.md" })
   })
 
   it("numbers repeated titles", () => {
