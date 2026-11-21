@@ -50,10 +50,18 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/components/**', 'src/features/**'],
+    ignores: ['src/components/**', 'src/features/**', 'src/workspace/**'],
     rules: restrict({
       group: deepFeaturePattern,
       message: 'Import a feature through its public index: @/features/<name>.',
+    }),
+  },
+  {
+    files: ['src/workspace/**/*.{ts,tsx}'],
+    rules: restrict({
+      group: featurePattern,
+      message:
+        'The workspace is feature-neutral. Features register through the DocumentType contract in src/app.',
     }),
   },
   ...tierBoundaries,
