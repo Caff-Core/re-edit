@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { inlineKatexCss } from "./exporter"
+import { inlineKatexCss } from "./katex-css"
 
 describe("KaTeX stylesheet for exports", () => {
   it("inlines each woff2 font and drops the woff and ttf fallbacks", async () => {
