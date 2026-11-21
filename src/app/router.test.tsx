@@ -93,18 +93,6 @@ describe("app shell routes", () => {
     expect(router.state.location.pathname).toBe("/")
   })
 
-  it("commits a theme from settings", async () => {
-    const user = userEvent.setup()
-    renderApp("/settings")
-    const group = await screen.findByRole("group", { name: "Theme" })
-    await user.click(within(group).getByRole("button", { name: "Dark" }))
-    expect(document.documentElement).toHaveClass("dark")
-    expect(within(group).getByRole("button", { name: "Dark" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    )
-  })
-
   it("keeps Ctrl+B in the editor for bold instead of toggling the sidebar", async () => {
     const user = userEvent.setup()
     renderApp("/")

@@ -7,6 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+    color-scheme: light;
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
     --card: oklch(1 0 0);
@@ -42,6 +43,7 @@
 }
 
 .dark {
+    color-scheme: dark;
     --background: oklch(0.141 0.005 285.823);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.21 0.006 285.885);
@@ -73,6 +75,107 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+/*
+ * Solarized (Ethan Schoonover's palette). Hues are Solarized's; lightness is
+ * adjusted where the stock colors fall below WCAG AA (theme-contrast.test.ts).
+ * A Solarized theme also carries its scheme class (.light or .dark).
+ */
+.theme-solarized-light {
+    color-scheme: light;
+    --background: #fdf6e3;
+    --foreground: #073642;
+    --card: #fdf6e3;
+    --card-foreground: #073642;
+    --popover: #fdf6e3;
+    --popover-foreground: #073642;
+    --primary: #0073b8;
+    --primary-foreground: #fdf6e3;
+    --secondary: #eee8d5;
+    --secondary-foreground: #073642;
+    --muted: #eee8d5;
+    --muted-foreground: #546970;
+    --accent: #eee8d5;
+    --accent-foreground: #073642;
+    --destructive: #c9191e;
+    --border: #e1dbc8;
+    --input: #d6cfb9;
+    --ring: #576d74;
+    --sidebar: #eee8d5;
+    --sidebar-foreground: #073642;
+    --sidebar-primary: #0073b8;
+    --sidebar-primary-foreground: #fdf6e3;
+    --sidebar-accent: #e1dbc8;
+    --sidebar-accent-foreground: #073642;
+    --sidebar-border: #e1dbc8;
+    --sidebar-ring: #576d74;
+}
+
+.theme-solarized-dark {
+    color-scheme: dark;
+    --background: #002b36;
+    --foreground: #c2d1d1;
+    --card: #073642;
+    --card-foreground: #c2d1d1;
+    --popover: #073642;
+    --popover-foreground: #c2d1d1;
+    --primary: #3596de;
+    --primary-foreground: #002b36;
+    --secondary: #14404d;
+    --secondary-foreground: #c2d1d1;
+    --muted: #14404d;
+    --muted-foreground: #9aacae;
+    --accent: #14404d;
+    --accent-foreground: #c2d1d1;
+    --destructive: #ee8d82;
+    --border: #1d4a57;
+    --input: #26535f;
+    --ring: #768c93;
+    --sidebar: #073642;
+    --sidebar-foreground: #c2d1d1;
+    --sidebar-primary: #3596de;
+    --sidebar-primary-foreground: #002b36;
+    --sidebar-accent: #14404d;
+    --sidebar-accent-foreground: #c2d1d1;
+    --sidebar-border: #1d4a57;
+    --sidebar-ring: #768c93;
+}
+
+/*
+ * Motion presets (REQ-008), set as data-motion on <html> by MotionProvider.
+ * None also applies when the system asks for reduced motion.
+ */
+:root {
+    --motion-duration: 200ms;
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+:root[data-motion="none"] {
+    --motion-duration: 0ms;
+}
+:root[data-motion="subtle"] {
+    --motion-duration: 150ms;
+}
+:root[data-motion="normal"] {
+    --motion-duration: 200ms;
+}
+/* Bouncy is the one preset that overshoots; REQ-008 asks for it by name. */
+:root[data-motion="bouncy"] {
+    --motion-duration: 300ms;
+    --motion-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Theme changes cross-fade through a view transition (opacity only). */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: var(--motion-duration);
+    animation-timing-function: var(--motion-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
 }
 
 @theme inline {

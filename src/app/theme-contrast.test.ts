@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest"
 /**
  * WCAG 2.2 AA contrast for every theme defined in the stylesheets: 4.5:1 for
  * text and 3:1 for focus rings and icon-only fills (1.4.3, 1.4.11). A theme
- * is a `:root` or `.<name>` block that sets `--background`; new themes are
- * checked without changing this file.
+ * is a `:root` or `.<name>` block that sets `--background` and its
+ * `color-scheme`; new themes are checked without changing this file.
  */
 
 // Read from disk: Vitest does not load stylesheet contents.
@@ -72,32 +72,34 @@ function blocks(css: string, selector: RegExp) {
     .filter(({ head }) => selector.test(head))
 }
 
+const merged = (css: string, head: RegExp) =>
+  declarations(
+    blocks(css, head)
+      .map((b) => b.body)
+      .join("")
+  )
+
+/**
+ * A theme's effective tokens, layered as the browser applies them: `:root`,
+ * then `.dark` for a dark theme (themes carry their scheme class), then the
+ * theme class. Syntax colors layer the same way in the document stylesheet.
+ */
 const themes = blocks(appCss, /^(:root|\.[a-z-]+)$/)
-  .map(({ head, body }) => ({ name: head, tokens: declarations(body) }))
-  .filter(({ tokens }) => "background" in tokens)
-  .map(({ name, tokens }) => {
-    // A theme class overrides the base tokens; the document stylesheet adds
-    // its syntax colors, overridden per theme by `.<name> .markdown-body`.
-    const base = declarations(
-      blocks(appCss, /^:root$/)
-        .map((b) => b.body)
-        .join("")
-    )
-    const syntax = (head: RegExp) =>
-      declarations(
-        blocks(documentCss, head)
-          .map((b) => b.body)
-          .join("")
-      )
+  .filter(({ body }) => /--background:/.test(body))
+  .map(({ head: name, body }) => {
+    const dark = /color-scheme:\s*dark/.test(body)
+    const own = name !== ":root" && name !== ".dark"
+    const layer = (pattern: (n: string) => string) =>
+      own ? merged(documentCss, new RegExp(pattern(name))) : {}
     return {
       name,
       tokens: {
-        ...base,
-        ...syntax(/^\.markdown-body$/),
-        ...(name === ":root"
-          ? {}
-          : syntax(new RegExp(`^\\${name} \\.markdown-body$`))),
-        ...tokens,
+        ...merged(appCss, /^:root$/),
+        ...(dark ? merged(appCss, /^\.dark$/) : {}),
+        ...declarations(body),
+        ...merged(documentCss, /^\.markdown-body$/),
+        ...(dark ? merged(documentCss, /^\.dark \.markdown-body$/) : {}),
+        ...layer((n) => `^\\${n} \\.markdown-body$`),
       },
     }
   })
@@ -140,7 +142,12 @@ const NON_TEXT: [string, string][] = [
 describe("AC-009: theme contrast", () => {
   it("finds the light and dark themes", () => {
     expect(themes.map((t) => t.name)).toEqual(
-      expect.arrayContaining([":root", ".dark"])
+      expect.arrayContaining([
+        ":root",
+        ".dark",
+        ".theme-solarized-light",
+        ".theme-solarized-dark",
+      ])
     )
   })
 
