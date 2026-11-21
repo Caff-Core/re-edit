@@ -20,11 +20,7 @@ jobs:
   fedora-rpm:
     name: Fedora 44 RPM
     runs-on: ubuntu-latest
-    container:
-      image: fedora:44
-      # Chromium's sandbox needs user namespaces, which the default container
-      # profiles block. The renderer always runs sandboxed, never --no-sandbox.
-      options: --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+    container: fedora:44
     steps:
       - name: Install build dependencies
         run: |
@@ -60,6 +56,11 @@ jobs:
           # The container disables weak dependencies; a desktop install pulls
           # Chromium in through the RPM's Recommends.
           dnf install -y chromium poppler-utils
+          # The runner host blocks unprivileged user namespaces, so Chromium
+          # uses its setuid sandbox helper, which needs mode 4755 inside the
+          # container. The renderer stays sandboxed; the app never passes
+          # --no-sandbox. Fedora desktops use the namespace sandbox instead.
+          chmod 4755 /usr/lib64/chromium-browser/chrome-sandbox
           mkdir -p /tmp/export
           bun scripts/export-sample.ts /tmp/export/sample.html
           (cd src-tauri && cargo build --release --example render_pdf)
