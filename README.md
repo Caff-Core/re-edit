@@ -38,6 +38,15 @@ bun run build
 cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
+## Package
+
+```bash
+bun tauri build --bundles rpm
+sudo dnf install ./src-tauri/target/release/bundle/rpm/re-edit-*.x86_64.rpm
+```
+
+The `Package` workflow builds the RPM in a `fedora:44` container on every push to `main` and on pull requests that touch packaging, installs it, and uploads it as the `re-edit-fedora44-rpm` artifact.
+
 ## Docs
 
 - [Constitution](docs/.specify/memory/constitution.md)
