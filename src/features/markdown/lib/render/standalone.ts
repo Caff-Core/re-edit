@@ -21,6 +21,11 @@ export interface StandaloneOptions {
   loadImage: (src: string) => Promise<string>
   /** Mermaid source to an SVG data URL. */
   renderDiagram: (source: string) => Promise<string>
+  /**
+   * KaTeX's stylesheet with its fonts as data URLs. Called only when the
+   * document has math; without it, math falls back to native MathML.
+   */
+  loadMathCss?: () => Promise<string>
 }
 
 const REMOTE = /^https?:\/\//i
@@ -84,11 +89,16 @@ function diagramSource(
 }
 
 /**
- * Makes the preview tree self-contained: math keeps only its MathML (shown
- * natively, no fonts needed), diagrams and local images become data URLs,
- * and remote images become notes, as in the preview.
+ * Makes the preview tree self-contained: diagrams and local images become
+ * data URLs and remote images become notes, as in the preview. Math keeps
+ * KaTeX's rendering when its stylesheet is embedded (`keepKatex`), and
+ * otherwise only its MathML, which browsers show without fonts.
  */
-async function embed(tree: Root, options: StandaloneOptions) {
+async function embed(
+  tree: Root,
+  options: StandaloneOptions,
+  keepKatex: boolean
+) {
   const t = options.messages
   const jobs: Promise<void>[] = []
   const katexHtml: { parent: { children: ElementContent[] }; node: Element }[] =
@@ -96,7 +106,7 @@ async function embed(tree: Root, options: StandaloneOptions) {
 
   visit(tree, "element", (node, _index, parent) => {
     if (!parent) return
-    if (hasClass(node, "katex-html")) {
+    if (!keepKatex && hasClass(node, "katex-html")) {
       katexHtml.push({
         parent: parent as { children: ElementContent[] },
         node,
@@ -162,6 +172,14 @@ async function embed(tree: Root, options: StandaloneOptions) {
   await Promise.all(jobs)
 }
 
+function hasMath(tree: Root) {
+  let found = false
+  visit(tree, "element", (node) => {
+    if (hasClass(node, "katex")) found = true
+  })
+  return found
+}
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -201,7 +219,11 @@ export async function markdownToStandaloneHtml(
   options: StandaloneOptions
 ): Promise<string> {
   const tree = markdownToHast(source)
-  await embed(tree, options)
+  let mathCss = ""
+  if (options.loadMathCss && hasMath(tree)) {
+    mathCss = await options.loadMathCss().catch(() => "")
+  }
+  await embed(tree, options, mathCss !== "")
   const tokens = Object.entries(options.tokens)
     .map(([name, value]) => `--${name}: ${value};`)
     .join(" ")
@@ -211,13 +233,14 @@ export async function markdownToStandaloneHtml(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'">
 <meta name="color-scheme" content="${scheme}">
 <title>${escapeHtml(options.title)}</title>
 <style>
 :root { ${tokens} }
 ${pageCss(options.tokens.background)}
 ${options.css}
+${mathCss}
 </style>
 </head>
 <body>

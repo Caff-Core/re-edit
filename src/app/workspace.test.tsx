@@ -512,3 +512,31 @@ describe("AC-010/AC-011 base: export to HTML and PDF", () => {
     expect(view.state.doc.toString()).toContain("# Report")
   })
 })
+
+describe("AC-010: export embeds images next to a saved document", () => {
+  it("inlines sibling images and notes the ones it cannot include", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({
+      "/notes/a.md": "![Dot](img/dot.png) ![Escape](../secret.png)",
+      "/notes/img/dot.png": "iVBORw==",
+      "/secret.png": "c2VjcmV0",
+    })
+    files.nextOpenFile = "/notes/a.md"
+    files.nextExportPath = "/out/a.html"
+    renderWorkspace(files)
+    await user.click(await screen.findByRole("button", { name: "Open file" }))
+    await markdownView("a.md")
+
+    await user.click(screen.getByRole("button", { name: "File" }))
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Export as HTML…" })
+    )
+    expect(await screen.findByText("Exported a.html.")).toBeInTheDocument()
+    const html = files.files.get("/out/a.html") ?? ""
+    expect(html).toContain(
+      '<img src="data:image/png;base64,iVBORw==" alt="Dot">'
+    )
+    expect(html).toContain("../secret.png could not be included.")
+    expect(html).not.toContain("c2VjcmV0")
+  })
+})

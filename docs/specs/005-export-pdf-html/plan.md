@@ -6,7 +6,7 @@ Share rendering policy with preview. Use a Tauri Linux command to render HTML th
 
 ## Scaffold status
 
-The export pipeline is in place (005.04). A `DocumentType` may carry an `exporter` that returns standalone HTML; the Markdown exporter reuses the preview pipeline and URL policy, embeds the document styles and active theme tokens, inlines local images and Mermaid SVGs as data URLs, keeps math as MathML, and adds a content security policy that loads nothing. File → Export as HTML or PDF opens one destination chooser (`pick_export_path`). PDF export (`export_pdf`) renders that HTML with headless Chromium (sandbox on, temporary profile, no network, 60 second limit) and writes the destination atomically only after a PDF was produced. KaTeX's own fonts and styling for math (005.01) and packaged Chromium dependency handling (005.02) remain.
+The export pipeline is in place (005.04). A `DocumentType` may carry an `exporter` that returns standalone HTML; the Markdown exporter reuses the preview pipeline and URL policy, embeds the document styles and active theme tokens, inlines local images and Mermaid SVGs as data URLs, embeds KaTeX's stylesheet and woff2 fonts when the document has math (005.01; native MathML is the fallback), and adds a content security policy that loads nothing. File → Export as HTML or PDF opens one destination chooser (`pick_export_path`). PDF export (`export_pdf`) renders that HTML with headless Chromium (sandbox on, temporary profile, no network, 60 second limit) and writes the destination atomically only after a PDF was produced. Packaged Chromium dependency handling (005.02) remains.
 
 ## Verification
 
