@@ -8,7 +8,7 @@
   --md-syntax-string: #047857;
   --md-syntax-number: #0369a1;
   --md-syntax-title: #b45309;
-  --md-syntax-comment: #71717a;
+  --md-syntax-comment: var(--muted-foreground);
 
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -17,13 +17,13 @@
   overflow-wrap: anywhere;
 }
 
-/* Categorical syntax colors: AA contrast on both theme backgrounds. */
+/* Categorical syntax colors: AA contrast on the code background (--muted) in every theme. */
 .dark .markdown-body {
   --md-syntax-keyword: #c4b5fd;
   --md-syntax-string: #6ee7b7;
   --md-syntax-number: #7dd3fc;
   --md-syntax-title: #fcd34d;
-  --md-syntax-comment: #a1a1aa;
+  --md-syntax-comment: var(--muted-foreground);
 }
 
 .markdown-body > :first-child { margin-top: 0; }

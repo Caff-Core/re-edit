@@ -43,6 +43,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useMessages } from "@/lib/i18n"
 import type { DocumentEditorProps } from "@/workspace"
 
 import { insertLink, toggleInline } from "../lib/commands/formatting"
@@ -56,6 +57,7 @@ import {
 } from "../lib/commands/table"
 import type { EditorStatus } from "../lib/extensions"
 import { createImageLoader } from "../lib/render/image-loader"
+import { markdownMessages, type MarkdownMessages } from "../messages"
 import { SHORTCUTS } from "../lib/keymap"
 import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor"
 
@@ -67,10 +69,11 @@ const MarkdownPreview = lazy(() =>
 )
 
 function PreviewSkeleton() {
+  const t = useMessages(markdownMessages)
   return (
     <div
       role="status"
-      aria-label="Loading preview"
+      aria-label={t.loadingPreview}
       className="flex flex-col gap-3 p-6"
     >
       <Skeleton className="h-5 w-1/2" />
@@ -82,14 +85,26 @@ function PreviewSkeleton() {
 
 export type ViewMode = "editor" | "split" | "preview"
 
-const VIEW_MODES: { value: ViewMode; label: string; icon: ReactNode }[] = [
+const VIEW_MODES: {
+  value: ViewMode
+  label: keyof MarkdownMessages & `view${string}`
+  icon: ReactNode
+}[] = [
   {
     value: "editor",
-    label: "Editor",
+    label: "viewEditor",
     icon: <PenLineIcon aria-hidden="true" />,
   },
-  { value: "split", label: "Split", icon: <Columns2Icon aria-hidden="true" /> },
-  { value: "preview", label: "Preview", icon: <EyeIcon aria-hidden="true" /> },
+  {
+    value: "split",
+    label: "viewSplit",
+    icon: <Columns2Icon aria-hidden="true" />,
+  },
+  {
+    value: "preview",
+    label: "viewPreview",
+    icon: <EyeIcon aria-hidden="true" />,
+  },
 ]
 
 function isViewMode(value: string | undefined): value is ViewMode {
@@ -119,6 +134,7 @@ function ToolbarAction({
   onClick: () => void
   children: ReactNode
 }) {
+  const t = useMessages(markdownMessages)
   return (
     <Tooltip>
       <TooltipTrigger
@@ -136,9 +152,7 @@ function ToolbarAction({
       >
         {children}
       </TooltipTrigger>
-      <TooltipContent>
-        {label} ({shortcut})
-      </TooltipContent>
+      <TooltipContent>{t.withShortcut(label, shortcut)}</TooltipContent>
     </Tooltip>
   )
 }
@@ -162,6 +176,7 @@ export function MarkdownDocument({
   resolveAsset,
   ref,
 }: MarkdownDocumentProps) {
+  const t = useMessages(markdownMessages)
   const editor = useRef<MarkdownEditorHandle>(null)
   const saved = useRef(savedContent)
   // A recovered draft starts different from its file, so it starts dirty;
@@ -238,22 +253,22 @@ export function MarkdownDocument({
 
   const tableItems = [
     {
-      label: "Add row below",
+      label: t.addRow,
       shortcut: SHORTCUTS.addRow,
       command: addTableRow,
     },
     {
-      label: "Add column right",
+      label: t.addColumn,
       shortcut: SHORTCUTS.addColumn,
       command: addTableColumn,
     },
     {
-      label: "Delete row",
+      label: t.deleteRow,
       shortcut: SHORTCUTS.deleteRow,
       command: deleteTableRow,
     },
     {
-      label: "Delete column",
+      label: t.deleteColumn,
       shortcut: SHORTCUTS.deleteColumn,
       command: deleteTableColumn,
     },
@@ -264,11 +279,11 @@ export function MarkdownDocument({
       <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
         <div
           role="toolbar"
-          aria-label="Edit"
+          aria-label={t.edit}
           className="flex items-center gap-1"
         >
           <ToolbarAction
-            label="Undo"
+            label={t.undo}
             shortcut={SHORTCUTS.undo}
             disabled={!status.canUndo}
             onClick={() => editor.current?.undo()}
@@ -276,7 +291,7 @@ export function MarkdownDocument({
             <Undo2Icon aria-hidden="true" />
           </ToolbarAction>
           <ToolbarAction
-            label="Redo"
+            label={t.redo}
             shortcut={SHORTCUTS.redo}
             disabled={!status.canRedo}
             onClick={() => editor.current?.redo()}
@@ -285,28 +300,28 @@ export function MarkdownDocument({
           </ToolbarAction>
           <Separator orientation="vertical" className="mx-1 h-4" />
           <ToolbarAction
-            label="Bold"
+            label={t.bold}
             shortcut={SHORTCUTS.bold}
             onClick={() => runCommand(bold)}
           >
             <BoldIcon aria-hidden="true" />
           </ToolbarAction>
           <ToolbarAction
-            label="Italic"
+            label={t.italic}
             shortcut={SHORTCUTS.italic}
             onClick={() => runCommand(italic)}
           >
             <ItalicIcon aria-hidden="true" />
           </ToolbarAction>
           <ToolbarAction
-            label="Inline code"
+            label={t.inlineCode}
             shortcut={SHORTCUTS.code}
             onClick={() => runCommand(code)}
           >
             <CodeIcon aria-hidden="true" />
           </ToolbarAction>
           <ToolbarAction
-            label="Link"
+            label={t.link}
             shortcut={SHORTCUTS.link}
             onClick={() => runCommand(insertLink)}
           >
@@ -323,7 +338,7 @@ export function MarkdownDocument({
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        aria-label="Table"
+                        aria-label={t.table}
                       />
                     }
                   />
@@ -331,11 +346,11 @@ export function MarkdownDocument({
               >
                 <TableIcon aria-hidden="true" />
               </TooltipTrigger>
-              <TooltipContent>Table</TooltipContent>
+              <TooltipContent>{t.table}</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuItem onClick={() => runCommand(insertTable)}>
-                Insert table
+                {t.insertTable}
                 <DropdownMenuShortcut>
                   {SHORTCUTS.insertTable}
                 </DropdownMenuShortcut>
@@ -343,9 +358,7 @@ export function MarkdownDocument({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuLabel>
-                  {status.inTable
-                    ? "Current table"
-                    : "Place the cursor in a table"}
+                  {status.inTable ? t.currentTable : t.placeCursorInTable}
                 </DropdownMenuLabel>
                 {tableItems.map((item) => (
                   <DropdownMenuItem
@@ -361,13 +374,13 @@ export function MarkdownDocument({
                   disabled={!status.inTable}
                   onClick={() => runCommand(formatCurrentTable)}
                 >
-                  Align columns
+                  {t.alignColumns}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           <ToolbarAction
-            label="Find and replace"
+            label={t.findReplace}
             shortcut={SHORTCUTS.find}
             onClick={() => runCommand(openSearchPanel)}
           >
@@ -375,7 +388,7 @@ export function MarkdownDocument({
           </ToolbarAction>
         </div>
         <ToggleGroup
-          aria-label="View"
+          aria-label={t.view}
           size="sm"
           className="ml-auto"
           value={[mode]}
@@ -390,13 +403,13 @@ export function MarkdownDocument({
                 render={
                   <ToggleGroupItem
                     value={option.value}
-                    aria-label={option.label}
+                    aria-label={t[option.label]}
                   />
                 }
               >
                 {option.icon}
               </TooltipTrigger>
-              <TooltipContent>{option.label}</TooltipContent>
+              <TooltipContent>{t[option.label]}</TooltipContent>
             </Tooltip>
           ))}
         </ToggleGroup>
@@ -409,7 +422,7 @@ export function MarkdownDocument({
           <MarkdownEditor
             ref={editor}
             initialValue={initialContent}
-            label={`${title}, Markdown source`}
+            label={t.sourceLabel(title)}
             onChange={onContentChange}
             onStatusChange={onStatusChange}
             onAnnounce={setAnnouncement}
@@ -417,7 +430,7 @@ export function MarkdownDocument({
         </div>
         {mode === "editor" ? null : (
           <section
-            aria-label="Preview"
+            aria-label={t.viewPreview}
             className={
               mode === "split"
                 ? "flex min-h-0 min-w-0 flex-1 flex-col border-l"

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   cellOffset,
+  displayWidth,
   columnAt,
   deleteColumn,
   deleteRow,
@@ -100,5 +101,26 @@ describe("table model", () => {
     expect(moveCell(table, { row: 0, column: 0 }, -1)).toEqual({ row: -1, column: 1 })
     expect(moveCell(table, { row: -1, column: 0 }, -1)).toBeNull()
     expect(moveCell(table, { row: 1, column: 1 }, 1)).toBeNull()
+  })
+})
+
+describe("table width with wide characters", () => {
+  it("counts CJK characters as two columns", () => {
+    expect(displayWidth("abc")).toBe(3)
+    expect(displayWidth("列 1")).toBe(4)
+    expect(displayWidth("名称")).toBe(4)
+  })
+
+  it("aligns pipes when cells mix Chinese and Latin text", () => {
+    const lines = formatTable({
+      header: ["名称", "Name"],
+      alignments: ["none", "none"],
+      rows: [["编辑器", "editor"]],
+    })
+    expect(lines).toEqual([
+      "| 名称   | Name   |",
+      "| ------ | ------ |",
+      "| 编辑器 | editor |",
+    ])
   })
 })
