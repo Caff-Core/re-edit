@@ -2,8 +2,9 @@ import type { ComponentType, Ref } from "react"
 
 /**
  * Contract between the workspace and a document feature. The workspace owns
- * identity, tab order, titles, and dirty display. The feature owns parsing,
- * editing, undo history, dirty detection, and serialization.
+ * identity, tab order, titles, file paths, dirty display, saving, and draft
+ * recovery. The feature owns parsing, editing, undo history, dirty detection,
+ * and serialization.
  */
 export interface DocumentEditorHandle {
   /** Current content in the format the feature saves. */
@@ -19,9 +20,14 @@ export interface DocumentEditorHandle {
 export interface DocumentEditorProps {
   documentId: string
   title: string
+  /** Content the editor starts with (a recovered draft or the file). */
   initialContent: string
+  /** Last saved content; differs from initialContent for a recovered draft. */
+  savedContent: string
   /** Called whenever the document becomes dirty or clean. */
   onDirtyChange: (dirty: boolean) => void
+  /** Called after any edit, so the workspace can store a recovery draft. */
+  onEdit: () => void
   ref?: Ref<DocumentEditorHandle>
 }
 
@@ -32,7 +38,7 @@ export interface DocumentType {
   label: string
   /** Title for new documents, numbered when repeated. */
   defaultTitle: string
-  /** File extensions this type opens, lowercase with the dot. */
+  /** File extensions this type opens, lowercase with the dot. The first is the default. */
   extensions: string[]
   createEmpty(): string
   Editor: ComponentType<DocumentEditorProps>
@@ -42,17 +48,9 @@ export interface OpenDocument {
   id: string
   typeId: string
   title: string
+  /** Absolute path on disk, or null for a document that was never saved. */
+  path: string | null
   initialContent: string
+  savedContent: string
   dirty: boolean
-}
-
-export interface DocumentRef {
-  id: string
-  typeId: string
-  title: string
-}
-
-/** Where saved content goes. File management (003) supplies the native store. */
-export interface DocumentStore {
-  write(document: DocumentRef, content: string): Promise<void>
 }

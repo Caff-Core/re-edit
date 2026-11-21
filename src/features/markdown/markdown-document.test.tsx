@@ -20,7 +20,9 @@ function renderDocument(initialContent = "") {
         documentId="doc-1"
         title="Untitled"
         initialContent={initialContent}
+        savedContent={initialContent}
         onDirtyChange={onDirtyChange}
+        onEdit={() => {}}
       />
     </TooltipProvider>
   )
@@ -127,7 +129,9 @@ describe("view re-creation", () => {
     const props = {
       documentId: "doc-1",
       initialContent: "x",
+      savedContent: "x",
       onDirtyChange: () => {},
+      onEdit: () => {},
     }
     const { rerender } = render(
       <TooltipProvider>

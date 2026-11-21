@@ -10,12 +10,14 @@ import type { DocumentEditorProps, DocumentType } from "@/workspace"
 function PlainTextEditor({
   title,
   initialContent,
+  savedContent,
   onDirtyChange,
+  onEdit,
   ref,
 }: DocumentEditorProps) {
   const textarea = useRef<HTMLTextAreaElement>(null)
-  const saved = useRef(initialContent)
-  const dirty = useRef(false)
+  const saved = useRef(savedContent)
+  const dirty = useRef(initialContent !== savedContent)
 
   const report = (content: string) => {
     const next = content !== saved.current
@@ -39,7 +41,10 @@ function PlainTextEditor({
       ref={textarea}
       aria-label={`${title}, plain text`}
       defaultValue={initialContent}
-      onChange={(event) => report(event.target.value)}
+      onChange={(event) => {
+        report(event.target.value)
+        onEdit()
+      }}
     />
   )
 }

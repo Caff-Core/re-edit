@@ -6,7 +6,7 @@ Keep shared path and dialog operations in the native service and state such as o
 
 ## Scaffold status
 
-Not started. Depends on 000.01 (Tauri shell and native service boundary) and 001.02 (document registry and tab contract).
+003.01 is in place. Native file commands in `src-tauri/src/native/files.rs` only touch files and folders picked in a native dialog (`FileScope`, persisted in the app data folder; `..` and escaping symlinks are rejected). The workspace opens files into tabs, lists the open folder in a tree, saves to disk with Save and Save As, keeps eight recent files and folders, and stores the session with a draft of every dirty document, restored after a restart. Writes are plain; atomic save, conflict handling, and file watching are 003.02. The browser build uses an in-memory sample folder.
 
 ## Verification
 

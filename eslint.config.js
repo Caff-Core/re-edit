@@ -32,7 +32,8 @@ const tierBoundaries = tiers.map((tier, index) => ({
 }))
 
 export default defineConfig([
-  globalIgnores(['dist', 'src-tauri']),
+  // src/components/reui is vendor code installed by the ReUI CLI and is never edited.
+  globalIgnores(['dist', 'src-tauri', 'src/components/reui', 'src/routeTree.gen.ts']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

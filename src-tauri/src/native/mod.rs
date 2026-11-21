@@ -6,6 +6,8 @@
 
 use serde::Serialize;
 
+pub mod files;
+
 /// Static facts about the running application.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
