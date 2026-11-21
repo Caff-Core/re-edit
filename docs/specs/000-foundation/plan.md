@@ -10,4 +10,4 @@ The shadcn/ui Vite template is in place with Bun, Tailwind CSS 4, Base UI, and t
 
 ## Verification
 
-Each task in [tasks.md](tasks.md) states its check. CI runs lint, typecheck, build, and tests once 000.04 lands.
+Each task in [tasks.md](tasks.md) states its check. CI runs lint, typecheck, tests, and build for the frontend, and fmt, clippy, and tests for the Tauri crate.
