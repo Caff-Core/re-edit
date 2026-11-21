@@ -56,8 +56,8 @@ function PlainTextEditor({
 
 export const plainTextDocumentType: DocumentType = {
   id: "plain-text",
-  label: "Plain text",
-  defaultTitle: "Untitled text",
+  label: { en: "Plain text", "zh-CN": "纯文本" },
+  defaultTitle: { en: "Untitled text", "zh-CN": "未命名文本" },
   extensions: [".txt"],
   createEmpty: () => "",
   Editor: PlainTextEditor,

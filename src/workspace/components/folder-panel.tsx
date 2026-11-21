@@ -23,6 +23,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+import { useMessages } from "@/lib/i18n"
+import { useDescribeError } from "@/services/native"
+
+import { workspaceMessages } from "../messages"
 import { basename } from "../paths"
 import { useWorkspace, type FolderState } from "../workspace-provider"
 
@@ -58,6 +62,8 @@ function PanelAction({
 /** Side panel listing the open folder. */
 export function FolderPanel({ folder }: { folder: FolderState }) {
   const workspace = useWorkspace()
+  const t = useMessages(workspaceMessages)
+  const describe = useDescribeError()
   const name = basename(folder.path)
   const activePath =
     workspace.state.documents.find((d) => d.id === workspace.state.activeId)
@@ -65,7 +71,7 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
 
   return (
     <aside
-      aria-label={`Folder ${name}`}
+      aria-label={t.folderLabel(name)}
       className="flex w-64 shrink-0 flex-col border-r"
     >
       <div className="flex h-10 shrink-0 items-center gap-1 border-b pr-1 pl-3">
@@ -80,12 +86,12 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
           {name}
         </span>
         <PanelAction
-          label="Refresh folder"
+          label={t.refreshFolder}
           onClick={() => void workspace.openFolder(folder.path)}
         >
           <RefreshCwIcon aria-hidden="true" />
         </PanelAction>
-        <PanelAction label="Close folder" onClick={workspace.closeFolder}>
+        <PanelAction label={t.closeFolder} onClick={workspace.closeFolder}>
           <XIcon aria-hidden="true" />
         </PanelAction>
       </div>
@@ -93,7 +99,7 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
         {folder.status === "loading" ? (
           <div
             role="status"
-            aria-label="Loading folder"
+            aria-label={t.loadingFolder}
             className="flex flex-col gap-2 p-1"
           >
             <Skeleton className="h-4 w-3/4" />
@@ -102,8 +108,8 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
           </div>
         ) : folder.status === "error" ? (
           <Alert variant="destructive">
-            <AlertTitle>Folder could not be read</AlertTitle>
-            <AlertDescription>{folder.error}</AlertDescription>
+            <AlertTitle>{t.folderUnreadable}</AlertTitle>
+            <AlertDescription>{describe(folder.error)}</AlertDescription>
             <AlertAction>
               <Button
                 type="button"
@@ -111,17 +117,15 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
                 size="sm"
                 onClick={() => void workspace.openFolder(folder.path)}
               >
-                Retry
+                {t.retry}
               </Button>
             </AlertAction>
           </Alert>
         ) : folder.listing.entries.every((e) => e.kind === "folder") ? (
           <Empty className="p-4">
             <EmptyHeader>
-              <EmptyTitle>No documents here</EmptyTitle>
-              <EmptyDescription>
-                This folder has no files the editor can open.
-              </EmptyDescription>
+              <EmptyTitle>{t.noDocumentsHere}</EmptyTitle>
+              <EmptyDescription>{t.noDocumentsHelp}</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Button
@@ -130,14 +134,14 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
                 size="sm"
                 onClick={() => void workspace.openFolderDialog()}
               >
-                Open another folder
+                {t.openAnotherFolder}
               </Button>
             </EmptyContent>
           </Empty>
         ) : (
           <div className="flex flex-col gap-2">
             <FileTree
-              label={`Files in ${name}`}
+              label={t.filesIn(name)}
               rootId={folder.listing.root}
               rootName={name}
               entries={folder.listing.entries.map((e) => ({
@@ -151,7 +155,7 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
             />
             {folder.listing.truncated ? (
               <p className="px-2 text-xs text-muted-foreground">
-                This folder is large; some files are not listed.
+                {t.folderTruncated}
               </p>
             ) : null}
           </div>

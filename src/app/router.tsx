@@ -4,6 +4,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router"
 
+import type { LocalizedText } from "@/lib/i18n"
 import { routeTree } from "@/routeTree.gen"
 
 declare module "@tanstack/react-router" {
@@ -12,7 +13,7 @@ declare module "@tanstack/react-router" {
   }
   interface StaticDataRouteOption {
     /** Page title shown in the shell header. */
-    title?: string
+    title?: LocalizedText
   }
 }
 

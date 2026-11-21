@@ -146,7 +146,9 @@ describe("AC-002: a second document type opens in a tab with its own save and di
     await user.click(screen.getByRole("button", { name: "Save" }))
     expect(await screen.findByText("a.txt was not saved")).toBeInTheDocument()
     expect(
-      screen.getByText("/docs/a.txt: permission denied")
+      screen.getByText(
+        "The file could not be read or written (/docs/a.txt: permission denied)."
+      )
     ).toBeInTheDocument()
     expect(tab("a.txt, unsaved changes")).toBeInTheDocument()
 

@@ -8,6 +8,7 @@ import {
 import { FilePenLineIcon, PenLineIcon, SettingsIcon } from "lucide-react"
 
 import { AppStatus } from "@/app/app-status"
+import { appMessages } from "@/app/messages"
 import { AppWindowControls } from "@/app/app-window-controls"
 import {
   documentRegistry,
@@ -17,25 +18,40 @@ import {
 import { NotFound } from "@/app/not-found"
 import type { AppSidebarItem } from "@/components/organisms/app-sidebar"
 import { AppShell } from "@/components/templates/app-shell"
+import { LocaleProvider, useLocale, useMessages } from "@/lib/i18n"
 import { nativeService } from "@/services/native"
 import { WorkspaceProvider, WorkspaceView } from "@/workspace"
 
-const BRAND = {
-  name: "re-edit",
-  description: "Markdown editor",
-  icon: <PenLineIcon />,
-}
-
-const NAV: AppSidebarItem[] = [
-  { to: "/", label: "Workspace", icon: <FilePenLineIcon aria-hidden="true" /> },
-  {
-    to: "/settings",
-    label: "Settings",
-    icon: <SettingsIcon aria-hidden="true" />,
-  },
-]
+const APP_NAME = "re-edit"
 
 function RootLayout() {
+  return (
+    <LocaleProvider>
+      <RootContent />
+    </LocaleProvider>
+  )
+}
+
+function RootContent() {
+  const t = useMessages(appMessages)
+  const { locale } = useLocale()
+  const brand = {
+    name: APP_NAME,
+    description: t.brandDescription,
+    icon: <PenLineIcon />,
+  }
+  const nav: AppSidebarItem[] = [
+    {
+      to: "/",
+      label: t.workspace,
+      icon: <FilePenLineIcon aria-hidden="true" />,
+    },
+    {
+      to: "/settings",
+      label: t.settings,
+      icon: <SettingsIcon aria-hidden="true" />,
+    },
+  ]
   const matches = useMatches()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -43,7 +59,9 @@ function RootLayout() {
   // Every real page is a child route, so a root-only match means nothing matched.
   const leaf = matches[matches.length - 1]
   const notFound = leaf === undefined || leaf.routeId === rootRouteId
-  const title = notFound ? "Not found" : (leaf.staticData.title ?? BRAND.name)
+  const title = notFound
+    ? t.notFoundTitle
+    : (leaf.staticData.title?.[locale] ?? APP_NAME)
   const showWorkspace = !notFound && leaf.routeId === "/"
 
   return (
@@ -53,8 +71,8 @@ function RootLayout() {
       session={sessionStore}
     >
       <AppShell
-        brand={BRAND}
-        nav={NAV}
+        brand={brand}
+        nav={nav}
         activePath={pathname}
         title={title}
         status={<AppStatus />}

@@ -53,6 +53,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+import { useLocale, useMessages } from "@/lib/i18n"
+import { useDescribeError } from "@/services/native"
+
+import { workspaceMessages } from "../messages"
 import { basename } from "../paths"
 import type { RecentEntry } from "../session"
 import { useWorkspace } from "../workspace-provider"
@@ -67,10 +71,11 @@ export const FILE_SHORTCUTS = {
 } as const
 
 function EditorSkeleton() {
+  const t = useMessages(workspaceMessages)
   return (
     <div
       role="status"
-      aria-label="Loading editor"
+      aria-label={t.loadingEditor}
       className="flex flex-col gap-3 p-6"
     >
       <Skeleton className="h-4 w-1/3" />
@@ -92,6 +97,9 @@ function RecentIcon({ entry }: { entry: RecentEntry }) {
  */
 export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
   const workspace = useWorkspace()
+  const t = useMessages(workspaceMessages)
+  const { locale } = useLocale()
+  const describe = useDescribeError()
   const { documents, activeId } = workspace.state
   const types = workspace.registry.list()
   const [closing, setClosing] = useState<string | null>(null)
@@ -150,7 +158,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="File"
+                  aria-label={t.file}
                 />
               }
             />
@@ -158,7 +166,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
         >
           <MenuIcon aria-hidden="true" />
         </TooltipTrigger>
-        <TooltipContent>File</TooltipContent>
+        <TooltipContent>{t.file}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>
@@ -167,7 +175,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
               key={type.id}
               onClick={() => workspace.newDocument(type.id)}
             >
-              New {type.label}
+              {t.newDocument(type.label[locale])}
               {index === 0 ? (
                 <DropdownMenuShortcut>
                   {FILE_SHORTCUTS.newDocument}
@@ -179,20 +187,20 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={() => void workspace.openFileDialog()}>
-            Open file…
+            {t.openFileMenu}
             <DropdownMenuShortcut>
               {FILE_SHORTCUTS.openFile}
             </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => void workspace.openFolderDialog()}>
-            Open folder…
+            {t.openFolderMenu}
             <DropdownMenuShortcut>
               {FILE_SHORTCUTS.openFolder}
             </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger disabled={recents.length === 0}>
-              Open recent
+              {t.openRecent}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-72">
               {recents.map((entry) => (
@@ -214,14 +222,14 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             disabled={!active}
             onClick={() => active && void workspace.save(active.id)}
           >
-            Save
+            {t.save}
             <DropdownMenuShortcut>{FILE_SHORTCUTS.save}</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={!active}
             onClick={() => active && void workspace.saveAs(active.id)}
           >
-            Save as…
+            {t.saveAsMenu}
             <DropdownMenuShortcut>{FILE_SHORTCUTS.saveAs}</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -237,7 +245,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Save"
+            aria-label={t.save}
             aria-keyshortcuts="Control+S"
             disabled={!active}
             onClick={() => active && void workspace.save(active.id)}
@@ -246,7 +254,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
       >
         <SaveIcon aria-hidden="true" />
       </TooltipTrigger>
-      <TooltipContent>Save ({FILE_SHORTCUTS.save})</TooltipContent>
+      <TooltipContent>{t.saveWithShortcut(FILE_SHORTCUTS.save)}</TooltipContent>
     </Tooltip>
   )
 
@@ -257,9 +265,11 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
       role={workspace.notice.tone === "error" ? "alert" : "status"}
     >
       {workspace.notice.tone === "error" ? (
-        <AlertTitle>Something went wrong</AlertTitle>
+        <AlertTitle>{t.somethingWentWrong}</AlertTitle>
       ) : null}
-      <AlertDescription>{workspace.notice.message}</AlertDescription>
+      <AlertDescription>
+        {workspace.notice.message(t, describe)}
+      </AlertDescription>
       <AlertAction className="flex gap-2">
         {workspace.notice.retry ? (
           <Button
@@ -272,7 +282,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
               retry?.()
             }}
           >
-            Retry
+            {t.retry}
           </Button>
         ) : null}
         <Button
@@ -281,7 +291,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
           size="sm"
           onClick={workspace.dismissNotice}
         >
-          Dismiss
+          {t.dismiss}
         </Button>
       </AlertAction>
     </Alert>
@@ -293,10 +303,8 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
         <EmptyMedia variant="icon">
           <FileTextIcon aria-hidden="true" />
         </EmptyMedia>
-        <EmptyTitle>No document open</EmptyTitle>
-        <EmptyDescription>
-          Start a new document, or open a file or folder from disk.
-        </EmptyDescription>
+        <EmptyTitle>{t.noDocumentTitle}</EmptyTitle>
+        <EmptyDescription>{t.noDocumentDescription}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="flex flex-col items-center gap-4">
         <div className="flex flex-wrap justify-center gap-2">
@@ -307,7 +315,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
               variant={index === 0 ? "default" : "outline"}
               onClick={() => workspace.newDocument(type.id)}
             >
-              New {type.label}
+              {t.newDocument(type.label[locale])}
             </Button>
           ))}
           <Button
@@ -316,7 +324,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             onClick={() => void workspace.openFileDialog()}
           >
             <FileTextIcon aria-hidden="true" data-icon="inline-start" />
-            Open file
+            {t.openFile}
           </Button>
           <Button
             type="button"
@@ -324,16 +332,16 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             onClick={() => void workspace.openFolderDialog()}
           >
             <FolderOpenIcon aria-hidden="true" data-icon="inline-start" />
-            Open folder
+            {t.openFolder}
           </Button>
         </div>
         {recents.length > 0 ? (
           <nav
-            aria-label="Recent"
+            aria-label={t.recent}
             className="flex w-full max-w-sm flex-col gap-1"
           >
             <h2 className="text-xs font-medium text-muted-foreground">
-              Recent
+              {t.recent}
             </h2>
             <ul className="flex flex-col">
               {recents.map((entry) => (
@@ -400,8 +408,8 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                 >
                   {error ? (
                     <Alert variant="destructive" className="m-2 w-auto">
-                      <AlertTitle>{document.title} was not saved</AlertTitle>
-                      <AlertDescription>{error}</AlertDescription>
+                      <AlertTitle>{t.notSaved(document.title)}</AlertTitle>
+                      <AlertDescription>{describe(error)}</AlertDescription>
                       <AlertAction>
                         <Button
                           type="button"
@@ -409,7 +417,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                           size="sm"
                           onClick={() => void workspace.save(document.id)}
                         >
-                          Retry
+                          {t.retry}
                         </Button>
                       </AlertAction>
                     </Alert>
@@ -418,14 +426,14 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                     <Alert className="m-2 w-auto">
                       <AlertTitle>
                         {conflict.diskContent === null
-                          ? `${document.title} was deleted on disk`
-                          : `${document.title} changed on disk`}
+                          ? t.deletedOnDisk(document.title)
+                          : t.changedOnDisk(document.title)}
                       </AlertTitle>
                       <AlertDescription className="flex flex-col gap-2">
                         <span>
                           {conflict.diskContent === null
-                            ? "Your text is kept. Save it to write the file again."
-                            : "Your unsaved edits are kept. Choose which version to keep, or open the disk version beside yours."}
+                            ? t.deletedHelp
+                            : t.changedHelp}
                         </span>
                         <span className="flex flex-wrap gap-2">
                           <Button
@@ -434,8 +442,8 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                             onClick={() => void workspace.keepMine(document.id)}
                           >
                             {conflict.diskContent === null
-                              ? "Save my version"
-                              : "Keep my version"}
+                              ? t.saveMine
+                              : t.keepMine}
                           </Button>
                           {conflict.diskContent === null ? null : (
                             <>
@@ -447,7 +455,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                                   workspace.takeDiskVersion(document.id)
                                 }
                               >
-                                Use disk version
+                                {t.useDisk}
                               </Button>
                               <Button
                                 type="button"
@@ -457,7 +465,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                                   workspace.openDiskCopy(document.id)
                                 }
                               >
-                                Open disk version
+                                {t.openDisk}
                               </Button>
                             </>
                           )}
@@ -499,15 +507,14 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Discard changes to {closingDocument?.title}?
+              {t.discardTitle(closingDocument?.title ?? "")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Closing this document loses the changes made since it was last
-              saved.
+              {t.discardDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogCancel>{t.keepEditing}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
@@ -515,7 +522,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                 setClosing(null)
               }}
             >
-              Discard and close
+              {t.discardAndClose}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
