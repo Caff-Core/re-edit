@@ -12,6 +12,7 @@ An offline Markdown editor for the Linux desktop. Fedora 44 is the first target.
 - TanStack Router (file routes in `src/routes`, hash history)
 - File access through native dialogs, limited to the files and folders you pick; tabs, folder tree, recents, and draft recovery
 - CodeMirror 6 Markdown editor in `src/features/markdown`
+- English and Simplified Chinese interface (`src/lib/i18n`); the language follows the desktop unless set in Settings
 
 ## Develop
 

@@ -11,11 +11,15 @@ import {
   type ReactNode,
 } from "react"
 
+import { useLocale } from "@/lib/i18n"
 import {
+  FileError,
   isConflict,
   type FileService,
   type FolderListing,
 } from "@/services/native"
+
+import { workspaceMessages, type WorkspaceText } from "./messages"
 
 import { basename, isInside } from "./paths"
 import type { DocumentRegistry } from "./registry"
@@ -36,7 +40,7 @@ import type { DocumentEditorHandle, OpenDocument } from "./types"
 export type FolderState =
   | { path: string; status: "loading" }
   | { path: string; status: "ready"; listing: FolderListing }
-  | { path: string; status: "error"; error: string }
+  | { path: string; status: "error"; error: unknown }
 
 /** The disk version of a document that changed while it had unsaved edits. */
 export interface DiskConflict {
@@ -47,7 +51,7 @@ export interface DiskConflict {
 
 export interface WorkspaceNotice {
   tone: "error" | "info"
-  message: string
+  message: WorkspaceText
   retry?: () => void
 }
 
@@ -57,7 +61,8 @@ export interface WorkspaceApi {
   folder: FolderState | null
   recents: RecentEntry[]
   notice: WorkspaceNotice | null
-  saveErrors: Record<string, string>
+  /** The last save failure per document; describe it when shown. */
+  saveErrors: Record<string, unknown>
   conflicts: Record<string, DiskConflict>
   /** Resolve a conflict by writing the buffer over the disk version. */
   keepMine(id: string): Promise<boolean>
@@ -93,10 +98,6 @@ export const DRAFT_DELAY_MS = 400
 let sequence = 0
 const nextId = () => `doc-${++sequence}`
 
-function message(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
-}
-
 export function WorkspaceProvider({
   registry,
   files,
@@ -114,7 +115,8 @@ export function WorkspaceProvider({
     session.loadRecents()
   )
   const [notice, setNotice] = useState<WorkspaceNotice | null>(null)
-  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
+  const [saveErrors, setSaveErrors] = useState<Record<string, unknown>>({})
+  const { locale } = useLocale()
   const [conflicts, setConflicts] = useState<Record<string, DiskConflict>>({})
   const ownWrites = useRef(new Map<string, number>())
   const editors = useRef(new Map<string, DocumentEditorHandle>())
@@ -201,7 +203,10 @@ export function WorkspaceProvider({
         {
           id: nextId(),
           typeId,
-          title: nextTitle(type.defaultTitle, stateRef.current.documents),
+          title: nextTitle(
+            type.defaultTitle[locale],
+            stateRef.current.documents
+          ),
           path: null,
           initialContent: content,
           savedContent: content,
@@ -211,7 +216,7 @@ export function WorkspaceProvider({
         true
       )
     },
-    [registry, openDocument]
+    [registry, openDocument, locale]
   )
 
   const openPath = useCallback(
@@ -225,7 +230,7 @@ export function WorkspaceProvider({
       if (!type) {
         setNotice({
           tone: "error",
-          message: `${basename(path)} is not a supported document type.`,
+          message: (t) => t.unsupported(basename(path)),
         })
         return
       }
@@ -248,7 +253,8 @@ export function WorkspaceProvider({
       } catch (error) {
         setNotice({
           tone: "error",
-          message: `Could not open ${basename(path)}: ${message(error)}`,
+          message: (t, describe) =>
+            t.couldNotOpen(basename(path), describe(error)),
           retry: () => void openPath(path),
         })
       }
@@ -264,7 +270,7 @@ export function WorkspaceProvider({
         setFolder({ path, status: "ready", listing })
         if (remember) rememberRecent({ path, kind: "folder" })
       } catch (error) {
-        setFolder({ path, status: "error", error: message(error) })
+        setFolder({ path, status: "error", error })
       }
     },
     [files, extensions, rememberRecent]
@@ -277,7 +283,7 @@ export function WorkspaceProvider({
     } catch (error) {
       setNotice({
         tone: "error",
-        message: `Could not open a file: ${message(error)}`,
+        message: (t, describe) => t.couldNotOpenFile(describe(error)),
       })
     }
   }, [files, extensions, openPath])
@@ -289,7 +295,7 @@ export function WorkspaceProvider({
     } catch (error) {
       setNotice({
         tone: "error",
-        message: `Could not open a folder: ${message(error)}`,
+        message: (t, describe) => t.couldNotOpenFolder(describe(error)),
       })
     }
   }, [files, openFolder])
@@ -358,7 +364,7 @@ export function WorkspaceProvider({
         if (isConflict(error)) {
           await loadConflict(id, path)
         } else {
-          setSaveErrors((errors) => ({ ...errors, [id]: message(error) }))
+          setSaveErrors((errors) => ({ ...errors, [id]: error }))
         }
         return false
       }
@@ -389,7 +395,7 @@ export function WorkspaceProvider({
       try {
         path = await files.pickSavePath(suggested)
       } catch (error) {
-        setSaveErrors((errors) => ({ ...errors, [id]: message(error) }))
+        setSaveErrors((errors) => ({ ...errors, [id]: error }))
         return false
       }
       if (!path) return false
@@ -450,7 +456,7 @@ export function WorkspaceProvider({
         })
         setNotice({
           tone: "info",
-          message: `Reloaded ${document.title} because it changed on disk.`,
+          message: (t) => t.reloaded(document.title),
         })
         return
       }
@@ -521,7 +527,7 @@ export function WorkspaceProvider({
           id: nextId(),
           typeId: document.typeId,
           title: nextTitle(
-            `${document.title} (on disk)`,
+            workspaceMessages[locale].diskCopyTitle(document.title),
             stateRef.current.documents
           ),
           path: null,
@@ -533,7 +539,7 @@ export function WorkspaceProvider({
         true
       )
     },
-    [conflicts, openDocument]
+    [conflicts, openDocument, locale]
   )
 
   const noteEdit = useCallback(() => {
@@ -548,7 +554,7 @@ export function WorkspaceProvider({
     restoring.current = true
     const previous = session.loadSession()
     void (async () => {
-      const failures: string[] = []
+      const failures: { title: string; error: unknown }[] = []
       for (const saved of previous?.documents ?? []) {
         const type = registry.get(saved.typeId)
         if (!type) continue
@@ -563,7 +569,7 @@ export function WorkspaceProvider({
             modifiedMs = file.modifiedMs
           } catch (error) {
             if (saved.draft === null) {
-              failures.push(`${saved.title} (${message(error)})`)
+              failures.push({ title: saved.title, error })
               continue
             }
           }
@@ -589,7 +595,10 @@ export function WorkspaceProvider({
       if (failures.length > 0) {
         setNotice({
           tone: "error",
-          message: `Could not reopen ${failures.join(", ")}.`,
+          message: (t, describe) =>
+            t.couldNotReopen(
+              failures.map((f) => t.reopenItem(f.title, describe(f.error)))
+            ),
         })
       }
       restored.current = true
@@ -601,7 +610,7 @@ export function WorkspaceProvider({
     async (id: string, src: string) => {
       const document = stateRef.current.documents.find((d) => d.id === id)
       if (!document?.path) {
-        throw new Error("Save the document to show local images")
+        throw new FileError("unsaved", "Save the document to show local images")
       }
       const image = await files.readDocumentImage(document.path, src)
       return `data:${image.mime};base64,${image.base64}`

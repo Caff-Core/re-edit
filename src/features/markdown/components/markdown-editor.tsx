@@ -9,8 +9,12 @@ import {
   type Ref,
 } from "react"
 
+import { useMessages } from "@/lib/i18n"
+
+import { editorMessages } from "../lib/editor-messages"
 import {
   markdownExtensions,
+  reconfigureLanguage,
   reconfigurePreferences,
   type EditorStatus,
 } from "../lib/extensions"
@@ -40,7 +44,8 @@ export interface MarkdownEditorProps {
 /**
  * CodeMirror 6 surface for Markdown source. The document lives in the
  * CodeMirror state; `initialValue` seeds it once, and a new `key` resets it.
- * Editor preferences apply live without resetting history.
+ * Preferences, the interface language, and the label apply live without
+ * resetting history.
  */
 export function MarkdownEditor({
   initialValue,
@@ -55,6 +60,9 @@ export function MarkdownEditor({
   const callbacks = useRef({ onChange, onStatusChange, onAnnounce })
   const refocus = useRef(false)
   const preferences = useEditorPreferences()
+  const messages = useMessages(editorMessages)
+  // Read when the view is created; later changes reconfigure the live view.
+  const language = useRef({ messages, label })
 
   useEffect(() => {
     callbacks.current = { onChange, onStatusChange, onAnnounce }
@@ -70,7 +78,8 @@ export function MarkdownEditor({
       state: EditorState.create({
         doc: initialValue,
         extensions: markdownExtensions({
-          label,
+          label: language.current.label,
+          messages: language.current.messages,
           preferences: getEditorPreferences(),
           onDocChange: (doc) => callbacks.current.onChange?.(doc),
           onStatusChange: (status) =>
@@ -80,7 +89,7 @@ export function MarkdownEditor({
       }),
     })
     viewRef.current = view
-    // A remount (StrictMode in development, or a new label) replaces the view;
+    // A remount (StrictMode in development) replaces the view;
     // keep focus in the editor if the old view had it.
     if (refocus.current) {
       refocus.current = false
@@ -91,12 +100,20 @@ export function MarkdownEditor({
       view.destroy()
       viewRef.current = null
     }
-  }, [initialValue, label])
+  }, [initialValue])
 
   useEffect(() => {
     const view = viewRef.current
     if (view) reconfigurePreferences(view, preferences)
   }, [preferences])
+
+  useEffect(() => {
+    const current = language.current
+    if (current.messages === messages && current.label === label) return
+    language.current = { messages, label }
+    const view = viewRef.current
+    if (view) reconfigureLanguage(view, messages, label)
+  }, [messages, label])
 
   useImperativeHandle(ref, () => {
     const execute = (command: Command) => {

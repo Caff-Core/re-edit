@@ -2,11 +2,15 @@ import { ImageOffIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { useMessages } from "@/lib/i18n"
+import { useDescribeError } from "@/services/native"
+
+import { markdownMessages } from "../messages"
 
 type ImageState =
   | { status: "loading" }
   | { status: "ready"; url: string }
-  | { status: "error"; message: string }
+  | { status: "error"; error: unknown }
 
 export interface PreviewImageProps {
   src?: string
@@ -41,6 +45,8 @@ function ImageNote({ alt, children }: { alt?: string; children: string }) {
  * offline, and the desktop app's content security policy blocks them.
  */
 export function PreviewImage({ src, alt, title, load }: PreviewImageProps) {
+  const t = useMessages(markdownMessages)
+  const describe = useDescribeError()
   const remote = src !== undefined && REMOTE.test(src)
   const [state, setState] = useState<ImageState>({ status: "loading" })
 
@@ -52,12 +58,7 @@ export function PreviewImage({ src, alt, title, load }: PreviewImageProps) {
         if (!cancelled) setState({ status: "ready", url })
       },
       (error: unknown) => {
-        if (!cancelled) {
-          setState({
-            status: "error",
-            message: error instanceof Error ? error.message : String(error),
-          })
-        }
+        if (!cancelled) setState({ status: "error", error })
       }
     )
     return () => {
@@ -68,22 +69,18 @@ export function PreviewImage({ src, alt, title, load }: PreviewImageProps) {
   if (!src) return null
   if (remote) {
     const host = new URL(src).host
-    return (
-      <ImageNote
-        alt={alt}
-      >{`Remote image from ${host} is not loaded.`}</ImageNote>
-    )
+    return <ImageNote alt={alt}>{t.remoteImage(host)}</ImageNote>
   }
   if (state.status === "loading") {
     return (
       <Skeleton
         role="status"
-        aria-label={alt ? `Loading ${alt}` : "Loading image"}
+        aria-label={alt ? t.loadingNamedImage(alt) : t.loadingImage}
         className="inline-block h-24 w-40 align-middle"
       />
     )
   }
   if (state.status === "error")
-    return <ImageNote alt={alt}>{state.message}</ImageNote>
+    return <ImageNote alt={alt}>{describe(state.error)}</ImageNote>
   return <img src={state.url} alt={alt ?? ""} title={title} />
 }

@@ -12,6 +12,12 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { defineMessages, useMessages } from "@/lib/i18n"
+
+const messages = defineMessages({
+  en: { primary: "Primary" },
+  "zh-CN": { primary: "主导航" },
+})
 
 export interface AppSidebarItem {
   to: LinkProps["to"]
@@ -42,6 +48,7 @@ function isActive(itemPath: string, activePath: string) {
  * the button for assistive technology.
  */
 export function AppSidebar({ brand, items, activePath }: AppSidebarProps) {
+  const t = useMessages(messages)
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -59,7 +66,9 @@ export function AppSidebar({ brand, items, activePath }: AppSidebarProps) {
                 {brand.icon}
               </span>
               <span className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:sr-only">
-                <span className="truncate text-sm font-medium">{brand.name}</span>
+                <span className="truncate text-sm font-medium">
+                  {brand.name}
+                </span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
                   {brand.description}
                 </span>
@@ -69,7 +78,7 @@ export function AppSidebar({ brand, items, activePath }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent role="navigation" aria-label="Primary">
+      <SidebarContent role="navigation" aria-label={t.primary}>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>

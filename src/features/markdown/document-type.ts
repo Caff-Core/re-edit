@@ -4,8 +4,8 @@ import type { DocumentType } from "@/workspace"
 
 export const markdownDocumentType: DocumentType = {
   id: "markdown",
-  label: "Markdown document",
-  defaultTitle: "Untitled",
+  label: { en: "Markdown document", "zh-CN": "Markdown 文档" },
+  defaultTitle: { en: "Untitled", "zh-CN": "未命名" },
   extensions: [".md", ".markdown"],
   createEmpty: () => "",
   // Loaded on first open so CodeMirror stays out of the startup bundle.

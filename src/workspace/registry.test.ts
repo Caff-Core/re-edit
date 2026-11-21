@@ -5,8 +5,8 @@ import type { DocumentType } from "./types"
 
 const type = (id: string, extensions: string[]): DocumentType => ({
   id,
-  label: id,
-  defaultTitle: id,
+  label: { en: id, "zh-CN": id },
+  defaultTitle: { en: id, "zh-CN": id },
   extensions,
   createEmpty: () => "",
   Editor: () => null,

@@ -1,4 +1,10 @@
-import { defaultKeymap, history, historyKeymap, redoDepth, undoDepth } from "@codemirror/commands"
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  redoDepth,
+  undoDepth,
+} from "@codemirror/commands"
 import { markdown } from "@codemirror/lang-markdown"
 import { search } from "@codemirror/search"
 import { Compartment, type Extension } from "@codemirror/state"
@@ -7,14 +13,13 @@ import {
   drawSelection,
   keymap,
   lineNumbers,
-  placeholder,
   type ViewUpdate,
 } from "@codemirror/view"
 
 import { announce } from "./commands/announce"
 import { tableAt } from "./commands/table"
 import { editorKeymap } from "./keymap"
-import { editorPhrases } from "./phrases"
+import { languageExtensions, type EditorMessages } from "./editor-messages"
 import { EDITOR_FONT_SIZES, type EditorPreferences } from "./preferences"
 import { editorHighlighting, editorTheme } from "./theme"
 
@@ -28,7 +33,8 @@ export interface MarkdownExtensionOptions {
   /** Accessible name of the editing surface. */
   label: string
   preferences: EditorPreferences
-  placeholder?: string
+  /** Strings in the interface language; swap with `reconfigureLanguage`. */
+  messages: EditorMessages
   onDocChange?: (doc: string) => void
   onStatusChange?: (status: EditorStatus) => void
   onAnnounce?: (message: string) => void
@@ -38,6 +44,28 @@ const wrapping = new Compartment()
 const gutter = new Compartment()
 const spelling = new Compartment()
 const fontSize = new Compartment()
+const language = new Compartment()
+const accessibleName = new Compartment()
+
+const labelAttribute = (label: string) =>
+  EditorView.contentAttributes.of({ "aria-label": label })
+
+/**
+ * Applies a new interface language and accessible name without recreating
+ * the editor, so the document and its undo history survive.
+ */
+export function reconfigureLanguage(
+  view: EditorView,
+  messages: EditorMessages,
+  label: string
+) {
+  view.dispatch({
+    effects: [
+      language.reconfigure(languageExtensions(messages)),
+      accessibleName.reconfigure(labelAttribute(label)),
+    ],
+  })
+}
 
 function preferenceExtensions(preferences: EditorPreferences) {
   return {
@@ -53,7 +81,10 @@ function preferenceExtensions(preferences: EditorPreferences) {
 }
 
 /** Applies changed preferences to a running editor without losing state. */
-export function reconfigurePreferences(view: EditorView, preferences: EditorPreferences) {
+export function reconfigurePreferences(
+  view: EditorView,
+  preferences: EditorPreferences
+) {
   const next = preferenceExtensions(preferences)
   view.dispatch({
     effects: [
@@ -69,27 +100,26 @@ export function reconfigurePreferences(view: EditorView, preferences: EditorPref
  * Base extensions for the Markdown editor. Tab is left unbound so keyboard
  * users can move focus out of the editor (WCAG 2.1.2, no keyboard trap).
  */
-export function markdownExtensions(options: MarkdownExtensionOptions): Extension[] {
+export function markdownExtensions(
+  options: MarkdownExtensionOptions
+): Extension[] {
   const prefs = preferenceExtensions(options.preferences)
   return [
     history(),
     drawSelection(),
     markdown(),
     search({ top: true }),
-    editorPhrases,
+    language.of(languageExtensions(options.messages)),
     editorTheme,
     editorHighlighting,
-    placeholder(options.placeholder ?? "Start writing Markdown"),
     editorKeymap(),
     keymap.of([...historyKeymap, ...defaultKeymap]),
     wrapping.of(prefs.wrapping),
     gutter.of(prefs.gutter),
     spelling.of(prefs.spelling),
     fontSize.of(prefs.fontSize),
-    EditorView.contentAttributes.of({
-      "aria-label": options.label,
-      "aria-multiline": "true",
-    }),
+    accessibleName.of(labelAttribute(options.label)),
+    EditorView.contentAttributes.of({ "aria-multiline": "true" }),
     EditorView.updateListener.of((update: ViewUpdate) => {
       if (update.docChanged) options.onDocChange?.(update.state.doc.toString())
       for (const transaction of update.transactions) {
@@ -97,7 +127,11 @@ export function markdownExtensions(options: MarkdownExtensionOptions): Extension
           if (effect.is(announce)) options.onAnnounce?.(effect.value)
         }
       }
-      if (update.docChanged || update.selectionSet || update.transactions.length) {
+      if (
+        update.docChanged ||
+        update.selectionSet ||
+        update.transactions.length
+      ) {
         options.onStatusChange?.({
           canUndo: undoDepth(update.state) > 0,
           canRedo: redoDepth(update.state) > 0,

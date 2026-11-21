@@ -1,5 +1,7 @@
 import type { ComponentType, Ref } from "react"
 
+import type { LocalizedText } from "@/lib/i18n"
+
 /**
  * Contract between the workspace and a document feature. The workspace owns
  * identity, tab order, titles, file paths, dirty display, saving, and draft
@@ -48,9 +50,9 @@ export interface DocumentType {
   /** Stable identifier, for example "markdown". */
   id: string
   /** Name shown in menus, for example "Markdown document". */
-  label: string
+  label: LocalizedText
   /** Title for new documents, numbered when repeated. */
-  defaultTitle: string
+  defaultTitle: LocalizedText
   /** File extensions this type opens, lowercase with the dot. The first is the default. */
   extensions: string[]
   createEmpty(): string

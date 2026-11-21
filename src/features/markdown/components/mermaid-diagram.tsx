@@ -2,8 +2,10 @@ import { WorkflowIcon } from "lucide-react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { useMessages } from "@/lib/i18n"
 
 import { mermaidTitle, renderMermaid } from "../lib/render/mermaid-render"
+import { markdownMessages } from "../messages"
 
 function subscribeToTheme(onChange: () => void) {
   const observer = new MutationObserver(onChange)
@@ -23,6 +25,7 @@ type DiagramState =
 
 /** A Mermaid diagram with its source as a text alternative. */
 export function MermaidDiagram({ source }: { source: string }) {
+  const t = useMessages(markdownMessages)
   const dark = useSyncExternalStore(subscribeToTheme, isDark, () => false)
   const [state, setState] = useState<DiagramState>({ status: "loading" })
   const title = mermaidTitle(source)
@@ -52,28 +55,28 @@ export function MermaidDiagram({ source }: { source: string }) {
       {state.status === "loading" ? (
         <Skeleton
           role="status"
-          aria-label="Rendering diagram"
+          aria-label={t.renderingDiagram}
           className="h-32 w-full max-w-md"
         />
       ) : state.status === "error" ? (
         <span
           role="img"
-          aria-label={`Diagram could not be drawn: ${state.message}`}
+          aria-label={t.diagramFailedLabel(state.message)}
           className="md-image-note"
         >
           <WorkflowIcon aria-hidden="true" />
           <span>
-            <strong>Diagram could not be drawn.</strong> {state.message}
+            <strong>{t.diagramFailed}</strong> {state.message}
           </span>
         </span>
       ) : (
         <img
           src={state.url}
-          alt={title ? `Diagram: ${title}` : "Diagram. Its source is below."}
+          alt={title ? t.diagramTitled(title) : t.diagramUntitled}
         />
       )}
       <details open={state.status === "error"}>
-        <summary>Diagram source</summary>
+        <summary>{t.diagramSource}</summary>
         <pre>
           <code>{source}</code>
         </pre>

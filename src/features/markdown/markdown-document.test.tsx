@@ -5,6 +5,7 @@ import { createRef } from "react"
 import { describe, expect, it, vi } from "vitest"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { LocaleProvider, useLocale } from "@/lib/i18n"
 import type { DocumentEditorHandle } from "@/workspace"
 import { markdownFixture } from "@/test/fixtures"
 
@@ -397,5 +398,68 @@ describe("002.02: math and diagrams in the preview", () => {
     expect(sources).toHaveLength(2)
     expect(sources[1].closest("details")).toHaveAttribute("open")
     expect(preview.querySelector("script, foreignObject")).toBeNull()
+  })
+})
+
+function LanguageSwitch() {
+  const { setPreference } = useLocale()
+  return (
+    <button type="button" onClick={() => setPreference("zh-CN")}>
+      switch language
+    </button>
+  )
+}
+
+describe("AC-009: editor language", () => {
+  it("changes language without losing the text or undo history", async () => {
+    localStorage.clear()
+    const user = userEvent.setup()
+    render(
+      <LocaleProvider>
+        <TooltipProvider>
+          <LanguageSwitch />
+          <MarkdownDocument
+            documentId="doc-1"
+            title="Untitled"
+            initialContent=""
+            savedContent=""
+            onDirtyChange={() => {}}
+            onEdit={() => {}}
+            path={null}
+            resolveAsset={fakeResolve}
+          />
+        </TooltipProvider>
+      </LocaleProvider>
+    )
+    const surface = screen.getByRole("textbox", {
+      name: "Untitled, Markdown source",
+    })
+    const view = EditorView.findFromDOM(surface)
+    if (!view) throw new Error("CodeMirror view not found")
+    act(() => {
+      view.dispatch({
+        changes: { from: 0, insert: "hello" },
+        userEvent: "input.type",
+      })
+    })
+
+    await user.click(screen.getByRole("button", { name: "switch language" }))
+
+    const translated = await screen.findByRole("textbox", {
+      name: "Untitled，Markdown 源文本",
+    })
+    expect(EditorView.findFromDOM(translated)).toBe(view)
+    expect(view.state.doc.toString()).toBe("hello")
+    await user.click(screen.getByRole("button", { name: "撤销" }))
+    expect(view.state.doc.toString()).toBe("")
+
+    act(() => {
+      view.focus()
+    })
+    await user.keyboard("{Control>}{Alt>}t{/Alt}{/Control}")
+    expect(view.state.doc.toString()).toContain("| 列 1 | 列 2 | 列 3 |")
+    expect(
+      await screen.findByText("已插入表格，3 列，表头行，第 1 列")
+    ).toBeInTheDocument()
   })
 })

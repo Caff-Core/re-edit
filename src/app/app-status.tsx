@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
 
+import { appMessages } from "@/app/messages"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useMessages } from "@/lib/i18n"
 import { nativeService, type AppInfo } from "@/services/native"
 
 type AppInfoState =
@@ -11,6 +13,7 @@ type AppInfoState =
 
 /** Status bar content: application version and host platform. */
 export function AppStatus() {
+  const t = useMessages(appMessages)
   const [state, setState] = useState<AppInfoState>({ status: "loading" })
   const [attempt, setAttempt] = useState(0)
 
@@ -36,16 +39,20 @@ export function AppStatus() {
 
   if (state.status === "loading") {
     return (
-      <Skeleton className="h-3 w-28" aria-label="Loading version" role="status" />
+      <Skeleton
+        className="h-3 w-28"
+        aria-label={t.loadingVersion}
+        role="status"
+      />
     )
   }
 
   if (state.status === "error") {
     return (
       <div role="alert" className="flex items-center gap-2">
-        <span>Version unavailable.</span>
+        <span>{t.versionUnavailable}</span>
         <Button type="button" variant="ghost" size="sm" onClick={retry}>
-          Retry
+          {t.retry}
         </Button>
       </div>
     )

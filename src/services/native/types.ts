@@ -33,9 +33,20 @@ export interface FileStat {
   modifiedMs: number
 }
 
-/** Kinds of file errors reported by the host. */
+/**
+ * Kinds of file errors. The host reports the first six; "unavailable" (no
+ * host, in a plain browser) and "unsaved" (a document with no folder yet)
+ * come from the frontend.
+ */
 export type FileErrorKind =
-  "outsideScope" | "notFound" | "tooLarge" | "notText" | "conflict" | "io"
+  | "outsideScope"
+  | "notFound"
+  | "tooLarge"
+  | "notText"
+  | "conflict"
+  | "io"
+  | "unavailable"
+  | "unsaved"
 
 /** A file operation failure with the host's error kind. */
 export class FileError extends Error {

@@ -9,10 +9,12 @@ import {
 import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useMessages } from "@/lib/i18n"
 
 import { MERMAID_CLASS } from "../lib/render/mermaid-blocks"
 import { markdownToHast } from "../lib/render/pipeline"
 import { MermaidDiagram } from "./mermaid-diagram"
+import { markdownMessages } from "../messages"
 import { PreviewImage } from "./preview-image"
 import "katex/dist/katex.min.css"
 import "../lib/render/markdown.css"
@@ -33,6 +35,7 @@ export function MarkdownPreview({
   /** Resolves a relative image source to a data URL (cached by the caller). */
   loadImage: (src: string) => Promise<string>
 }) {
+  const t = useMessages(markdownMessages)
   const deferred = useDeferredValue(source)
   const components = useMemo(
     () => ({
@@ -86,17 +89,17 @@ export function MarkdownPreview({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
       {result.error ? (
         <Alert variant="destructive" className="m-2 w-auto">
-          <AlertTitle>Preview could not update</AlertTitle>
+          <AlertTitle>{t.previewFailed}</AlertTitle>
           <AlertDescription>{result.error}</AlertDescription>
         </Alert>
       ) : null}
       {deferred.trim().length === 0 ? (
         <p className="p-6 text-sm text-muted-foreground">
-          Nothing to preview yet.
+          {t.nothingToPreview}
         </p>
       ) : (
         <article
-          aria-label={`${title}, preview`}
+          aria-label={t.previewLabel(title)}
           className="markdown-body max-w-[80ch] px-6 py-4"
           onClick={onClick}
         >

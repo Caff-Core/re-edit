@@ -72,7 +72,10 @@ export function parseTable(lines: string[]): Table | null {
     Array.from({ length: width }, (_, i) => cells[i] ?? "")
   return {
     header: pad(header),
-    alignments: Array.from({ length: width }, (_, i) => alignments[i] ?? "none"),
+    alignments: Array.from(
+      { length: width },
+      (_, i) => alignments[i] ?? "none"
+    ),
     rows: lines.slice(2).map((line) => pad(splitRow(line))),
   }
 }
@@ -91,8 +94,22 @@ function delimiter(alignment: Alignment, width: number): string {
   }
 }
 
+/** East Asian wide and fullwidth ranges: Hangul Jamo, CJK, kana, Hangul, fullwidth forms. */
+const WIDE =
+  /[\u1100-\u115F\u2E80-\u303E\u3041-\u33FF\u3400-\u4DBF\u4E00-\u9FFF\uA000-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}]/u
+
+/**
+ * Columns a cell takes in a monospace font: wide CJK characters take two,
+ * so tables with Chinese text still line up.
+ */
+export function displayWidth(text: string): number {
+  let width = 0
+  for (const char of text) width += WIDE.test(char) ? 2 : 1
+  return width
+}
+
 function padCell(text: string, width: number, alignment: Alignment): string {
-  const gap = width - text.length
+  const gap = width - displayWidth(text)
   if (gap <= 0) return text
   if (alignment === "right") return " ".repeat(gap) + text
   if (alignment === "center") {
@@ -107,13 +124,15 @@ export function formatTable(table: Table): string[] {
   const widths = table.header.map((cell, column) =>
     Math.max(
       3,
-      cell.length,
-      ...table.rows.map((row) => (row[column] ?? "").length)
+      displayWidth(cell),
+      ...table.rows.map((row) => displayWidth(row[column] ?? ""))
     )
   )
   const line = (cells: string[]) =>
     `| ${cells
-      .map((cell, column) => padCell(cell, widths[column], table.alignments[column]))
+      .map((cell, column) =>
+        padCell(cell, widths[column], table.alignments[column])
+      )
       .join(" | ")} |`
   return [
     line(table.header),
@@ -149,11 +168,17 @@ export function cellOffset(formattedLine: string, column: number): number {
   return formattedLine.length
 }
 
-export function emptyTable(columns = 3, rows = 1): Table {
+export function emptyTable(
+  columns = 3,
+  rows = 1,
+  headerName: (column: number) => string = (column) => `Column ${column}`
+): Table {
   return {
-    header: Array.from({ length: columns }, (_, i) => `Column ${i + 1}`),
+    header: Array.from({ length: columns }, (_, i) => headerName(i + 1)),
     alignments: Array.from({ length: columns }, () => "none"),
-    rows: Array.from({ length: rows }, () => Array.from({ length: columns }, () => "")),
+    rows: Array.from({ length: rows }, () =>
+      Array.from({ length: columns }, () => "")
+    ),
   }
 }
 
@@ -165,13 +190,20 @@ export interface TableEdit {
 export function insertRowBelow(table: Table, at: CellPosition): TableEdit {
   const index = at.row + 1
   const rows = [...table.rows]
-  rows.splice(index, 0, table.header.map(() => ""))
-  return { table: { ...table, rows }, cursor: { row: index, column: at.column } }
+  rows.splice(
+    index,
+    0,
+    table.header.map(() => "")
+  )
+  return {
+    table: { ...table, rows },
+    cursor: { row: index, column: at.column },
+  }
 }
 
 export function insertColumnRight(table: Table, at: CellPosition): TableEdit {
   const index = at.column + 1
-  const insert = <T,>(cells: T[], value: T) => [
+  const insert = <T>(cells: T[], value: T) => [
     ...cells.slice(0, index),
     value,
     ...cells.slice(index),
@@ -199,14 +231,17 @@ export function deleteRow(table: Table, at: CellPosition): TableEdit | null {
 /** Deletes a column. Returns null when it is the last one. */
 export function deleteColumn(table: Table, at: CellPosition): TableEdit | null {
   if (table.header.length <= 1) return null
-  const remove = <T,>(cells: T[]) => cells.filter((_, i) => i !== at.column)
+  const remove = <T>(cells: T[]) => cells.filter((_, i) => i !== at.column)
   return {
     table: {
       header: remove(table.header),
       alignments: remove(table.alignments),
       rows: table.rows.map(remove),
     },
-    cursor: { row: at.row, column: Math.min(at.column, table.header.length - 2) },
+    cursor: {
+      row: at.row,
+      column: Math.min(at.column, table.header.length - 2),
+    },
   }
 }
 

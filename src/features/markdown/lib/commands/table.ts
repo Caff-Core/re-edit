@@ -1,5 +1,10 @@
-import { EditorSelection, type EditorState, type StateCommand } from "@codemirror/state"
+import {
+  EditorSelection,
+  type EditorState,
+  type StateCommand,
+} from "@codemirror/state"
 
+import { editorStrings } from "../editor-messages"
 import { announce } from "./announce"
 import {
   cellOffset,
@@ -34,7 +39,8 @@ export function tableAt(state: EditorState): TableContext | null {
   let first = current.number
   let last = current.number
   while (first > 1 && isTableLine(state.doc.line(first - 1).text)) first--
-  while (last < state.doc.lines && isTableLine(state.doc.line(last + 1).text)) last++
+  while (last < state.doc.lines && isTableLine(state.doc.line(last + 1).text))
+    last++
   const lines: string[] = []
   for (let n = first; n <= last; n++) lines.push(state.doc.line(n).text)
   const table = parseTable(lines)
@@ -42,7 +48,12 @@ export function tableAt(state: EditorState): TableContext | null {
   const index = current.number - first
   if (index === 1) {
     // On the delimiter row: treat as the header.
-    return { firstLine: first, lastLine: last, table, cell: { row: -1, column: 0 } }
+    return {
+      firstLine: first,
+      lastLine: last,
+      table,
+      cell: { row: -1, column: 0 },
+    }
   }
   const column = Math.min(
     columnAt(current.text, head - current.from),
@@ -71,8 +82,11 @@ function replaceTable(
   const to = state.doc.line(context.lastLine).to
   const text = formatted.join("\n")
   const targetLine = lineIndexOf(edit.cursor.row)
-  const lineStart = formatted.slice(0, targetLine).reduce((sum, l) => sum + l.length + 1, 0)
-  const anchor = from + lineStart + cellOffset(formatted[targetLine], edit.cursor.column)
+  const lineStart = formatted
+    .slice(0, targetLine)
+    .reduce((sum, l) => sum + l.length + 1, 0)
+  const anchor =
+    from + lineStart + cellOffset(formatted[targetLine], edit.cursor.column)
   return state.update({
     changes: { from, to, insert: text },
     selection: EditorSelection.cursor(anchor),
@@ -82,15 +96,22 @@ function replaceTable(
   })
 }
 
+type TableMessages = ReturnType<typeof tableMessages>
+const tableMessages = (state: EditorState) => state.facet(editorStrings).table
+
 function tableCommand(
-  run: (context: TableContext) => { edit: TableEdit; message: string } | null
+  run: (
+    context: TableContext,
+    t: TableMessages
+  ) => { edit: TableEdit; message: string } | null
 ): StateCommand {
   return ({ state, dispatch }) => {
     const context = tableAt(state)
     if (!context) return false
-    const result = run(context)
+    const t = tableMessages(state)
+    const result = run(context, t)
     if (!result) {
-      dispatch(state.update({ effects: announce.of("Not available here") }))
+      dispatch(state.update({ effects: announce.of(t.notAvailable) }))
       return true
     }
     dispatch(replaceTable(state, context, result.edit, result.message))
@@ -98,51 +119,52 @@ function tableCommand(
   }
 }
 
-function describe(cell: CellPosition): string {
-  const row = cell.row < 0 ? "header row" : `row ${cell.row + 1}`
-  return `${row}, column ${cell.column + 1}`
-}
-
-export const addTableRow = tableCommand(({ table, cell }) => {
+export const addTableRow = tableCommand(({ table, cell }, t) => {
   const edit = insertRowBelow(table, cell)
-  return { edit, message: `Row added, ${describe(edit.cursor)}` }
+  return { edit, message: t.rowAdded(edit.cursor.row, edit.cursor.column) }
 })
 
-export const addTableColumn = tableCommand(({ table, cell }) => {
+export const addTableColumn = tableCommand(({ table, cell }, t) => {
   const edit = insertColumnRight(table, cell)
-  return { edit, message: `Column added, ${describe(edit.cursor)}` }
+  return { edit, message: t.columnAdded(edit.cursor.row, edit.cursor.column) }
 })
 
-export const deleteTableRow = tableCommand(({ table, cell }) => {
+export const deleteTableRow = tableCommand(({ table, cell }, t) => {
   const edit = deleteRow(table, cell)
-  return edit && { edit, message: `Row deleted, ${table.rows.length - 1} rows left` }
+  return edit && { edit, message: t.rowDeleted(table.rows.length - 1) }
 })
 
-export const deleteTableColumn = tableCommand(({ table, cell }) => {
+export const deleteTableColumn = tableCommand(({ table, cell }, t) => {
   const edit = deleteColumn(table, cell)
-  return edit && { edit, message: `Column deleted, ${edit.table.header.length} columns left` }
+  return edit && { edit, message: t.columnDeleted(edit.table.header.length) }
 })
 
-export const formatCurrentTable = tableCommand(({ table, cell }) => ({
+export const formatCurrentTable = tableCommand(({ table, cell }, t) => ({
   edit: { table, cursor: cell },
-  message: "Table formatted",
+  message: t.formatted,
 }))
 
 function moveCommand(direction: 1 | -1): StateCommand {
   return ({ state, dispatch }) => {
     const context = tableAt(state)
     if (!context) return false
+    const t = tableMessages(state)
     const target = moveCell(context.table, context.cell, direction)
     if (!target) {
       dispatch(
         state.update({
-          effects: announce.of(direction > 0 ? "Last cell" : "First cell"),
+          effects: announce.of(direction > 0 ? t.lastCell : t.firstCell),
         })
       )
       return true
     }
     dispatch(
-      replaceTable(state, context, { table: context.table, cursor: target }, describe(target))
+      replaceTable(
+        state,
+        context,
+        { table: context.table, cursor: target },
+        t.cell(target.row, target.column)
+      )
     )
     return true
   }
@@ -153,11 +175,14 @@ export const previousTableCell = moveCommand(-1)
 
 /** Inserts a 3 by 1 table on its own lines and puts the cursor in the first header cell. */
 export const insertTable: StateCommand = ({ state, dispatch }) => {
+  const t = tableMessages(state)
   const line = state.doc.lineAt(state.selection.main.head)
-  const formatted = formatTable(emptyTable())
+  const columns = 3
+  const formatted = formatTable(emptyTable(columns, 1, t.columnHeader))
   const needsBreakBefore = line.text.trim().length > 0
   const before = needsBreakBefore ? "\n\n" : ""
-  const next = line.number < state.doc.lines ? state.doc.line(line.number + 1) : null
+  const next =
+    line.number < state.doc.lines ? state.doc.line(line.number + 1) : null
   const after = next && next.text.trim().length > 0 ? "\n" : ""
   const from = needsBreakBefore ? line.to : line.from
   const to = line.to
@@ -166,8 +191,11 @@ export const insertTable: StateCommand = ({ state, dispatch }) => {
   dispatch(
     state.update({
       changes: { from, to, insert },
-      selection: EditorSelection.range(tableStart + 2, tableStart + 2 + "Column 1".length),
-      effects: announce.of("Table inserted, 3 columns, header row, column 1"),
+      selection: EditorSelection.range(
+        tableStart + 2,
+        tableStart + 2 + t.columnHeader(1).length
+      ),
+      effects: announce.of(t.inserted(columns)),
       scrollIntoView: true,
       userEvent: "input.table",
     })

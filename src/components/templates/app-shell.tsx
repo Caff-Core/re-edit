@@ -10,6 +10,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { defineMessages, useMessages } from "@/lib/i18n"
+
+const messages = defineMessages({
+  en: { toggleSidebar: "Toggle sidebar", status: "Status" },
+  "zh-CN": { toggleSidebar: "切换侧边栏", status: "状态" },
+})
 
 export interface AppShellProps {
   brand: AppSidebarBrand
@@ -45,6 +51,7 @@ export function AppShell({
   titleBarEnd,
   children,
 }: AppShellProps) {
+  const t = useMessages(messages)
   return (
     <SidebarProvider className="h-svh min-h-0 w-full overflow-hidden">
       <AppSidebar brand={brand} items={nav} activePath={activePath} />
@@ -53,7 +60,7 @@ export function AppShell({
           data-tauri-drag-region="deep"
           className="flex h-12 shrink-0 items-center gap-2 border-b px-3 select-none"
         >
-          <SidebarTrigger />
+          <SidebarTrigger aria-label={t.toggleSidebar} />
           <h1 className="min-w-0 flex-1 truncate text-sm font-medium">
             {title}
           </h1>
@@ -63,7 +70,7 @@ export function AppShell({
           {children}
         </div>
         <footer
-          aria-label="Status"
+          aria-label={t.status}
           className="flex h-8 shrink-0 items-center gap-2 border-t px-3 text-xs text-muted-foreground"
         >
           {status}
