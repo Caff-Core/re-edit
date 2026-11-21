@@ -4,7 +4,7 @@
 
 - [x] 000.01 Add the Tauri 2 shell for Linux with a typed native service boundary. Check: `bun tauri dev` opens the app on Fedora 44.
 - [x] 000.02 Add TanStack Router with a root layout and app shell template. Check: routes render inside the shell and unknown routes show a not-found view.
-- [ ] 000.03 Add the CodeMirror 6 base editor inside the Markdown feature module. Check: a buffer edits, undoes, and redoes in the shell.
+- [x] 000.03 Add the CodeMirror 6 base editor inside the Markdown feature module. Check: a buffer edits, undoes, and redoes in the shell.
 - [x] 000.04 Add Vitest with fixtures and run `bun run test` in CI. Check: CI fails on a failing test.
 - [ ] 000.05 Package for Fedora 44 as an RPM through the Tauri bundler and publish it as a CI artifact. Check: the RPM installs and launches on Fedora 44.
 - [x] 000.06 Set up the atomic folder layout and feature module convention. Check: shared components live under atoms, molecules, organisms, and templates, and AGENTS.md documents the convention.
