@@ -43,3 +43,4 @@ src/
 - Routing uses hash history so every route stays inside the one `index.html` Tauri serves. Give each route `staticData: { title }` for the shell header.
 - A Base UI `Button` given `render={<Link />}` becomes `<a role="button">`. For navigation, style the `Link` with `buttonVariants()` so it stays a link.
 - `SidebarProvider` toggles the sidebar on Ctrl/Cmd+B at the window. Editor keymaps that bind Mod-b must stop propagation.
+- CodeMirror extensions stay inside `src/features/markdown/lib`. Theme the editor with CSS variables (`var(--foreground)`), never fixed colors, and keep Tab unbound so focus can leave the editor.
