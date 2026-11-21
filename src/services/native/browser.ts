@@ -18,4 +18,7 @@ export const browserNativeService: NativeService = {
   writeTextFile: unavailable,
   listFolder: unavailable,
   readDocumentImage: unavailable,
+  statFile: unavailable,
+  watchPaths: async () => {},
+  onFileChanged: () => () => {},
 }
