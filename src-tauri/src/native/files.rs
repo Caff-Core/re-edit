@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 use std::fs;
-use std::io;
+use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
@@ -101,6 +101,14 @@ fn canonicalize_lenient(path: &Path) -> Result<PathBuf, FileError> {
     match fs::canonicalize(path) {
         Ok(canonical) => Ok(canonical),
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            // A dangling symlink also reports NotFound. Writing through it
+            // would create its target, possibly outside the scope.
+            if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+                return Err(FileError::OutsideScope(format!(
+                    "{} is a link to a missing file",
+                    path.display()
+                )));
+            }
             let parent = path
                 .parent()
                 .ok_or_else(|| FileError::NotFound(path.display().to_string()))?;
@@ -156,7 +164,10 @@ pub fn read_text(path: &Path) -> Result<TextFile, FileError> {
             MAX_FILE_BYTES / 1024 / 1024
         )));
     }
-    let bytes = fs::read(path).map_err(|e| FileError::io(path, e))?;
+    let mut bytes = Vec::new();
+    open_no_follow(path, false)?
+        .read_to_end(&mut bytes)
+        .map_err(|e| FileError::io(path, e))?;
     let content = String::from_utf8(bytes)
         .map_err(|_| FileError::NotText(format!("{} is not UTF-8 text", path.display())))?;
     Ok(TextFile {
@@ -166,8 +177,30 @@ pub fn read_text(path: &Path) -> Result<TextFile, FileError> {
 }
 
 pub fn write_text(path: &Path, content: &str) -> Result<u64, FileError> {
-    fs::write(path, content).map_err(|e| FileError::io(path, e))?;
+    open_no_follow(path, true)?
+        .write_all(content.as_bytes())
+        .map_err(|e| FileError::io(path, e))?;
     Ok(modified_ms(path))
+}
+
+/// Opens `path` without following a symlink in its last component, so a link
+/// swapped in after the scope check fails instead of leaving the scope.
+fn open_no_follow(path: &Path, write: bool) -> Result<fs::File, FileError> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut options = fs::OpenOptions::new();
+    if write {
+        options.write(true).create(true).truncate(true);
+    } else {
+        options.read(true);
+    }
+    options.custom_flags(libc::O_NOFOLLOW);
+    options.open(path).map_err(|error| {
+        if error.raw_os_error() == Some(libc::ELOOP) {
+            FileError::OutsideScope(format!("{} is a symbolic link", path.display()))
+        } else {
+            FileError::io(path, error)
+        }
+    })
 }
 
 /// Folders and supported files under `root`, folders first, then by name.
@@ -374,6 +407,37 @@ mod tests {
         let scope = FileScope::load(None);
         scope.allow(dir.path()).unwrap();
         assert!(scope.check(&dir.path().join("link.md")).is_err());
+    }
+
+    #[test]
+    fn scope_rejects_dangling_symlinks_and_never_writes_through_them() {
+        let dir = tree();
+        let other = tempfile::tempdir().unwrap();
+        let outside = other.path().join("created-outside.md");
+        std::os::unix::fs::symlink(&outside, dir.path().join("dangling.md")).unwrap();
+        let scope = FileScope::load(None);
+        scope.allow(dir.path()).unwrap();
+        assert!(matches!(
+            scope.check(&dir.path().join("dangling.md")),
+            Err(FileError::OutsideScope(_))
+        ));
+        // Even with the check bypassed, the write refuses to follow the link.
+        assert!(matches!(
+            write_text(&dir.path().join("dangling.md"), "x"),
+            Err(FileError::OutsideScope(_))
+        ));
+        assert!(!outside.exists());
+    }
+
+    #[test]
+    fn reads_refuse_symlinks_in_the_last_component() {
+        let dir = tree();
+        std::os::unix::fs::symlink(dir.path().join("readme.md"), dir.path().join("alias.md"))
+            .unwrap();
+        assert!(matches!(
+            read_text(&dir.path().join("alias.md")),
+            Err(FileError::OutsideScope(_))
+        ));
     }
 
     #[test]
