@@ -1,44 +1,55 @@
 import * as React from "react"
 
-type Theme = "dark" | "light" | "system"
-type ResolvedTheme = "dark" | "light"
+import {
+  applyThemeClasses,
+  isTheme,
+  resolveTheme,
+  type ConcreteTheme,
+  type Theme,
+} from "@/app/themes"
 
 type ThemeProviderProps = {
   children: React.ReactNode
   defaultTheme?: Theme
   storageKey?: string
-  disableTransitionOnChange?: boolean
 }
 
 type ThemeProviderState = {
+  /** The committed theme, the only one that is stored. */
   theme: Theme
   setTheme: (theme: Theme) => void
+  /**
+   * Shows a theme without committing it; null returns to the committed one.
+   * Used while a theme list is open (REQ-007).
+   */
+  previewTheme: (theme: Theme | null) => void
 }
 
 const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)"
-const THEME_VALUES: Theme[] = ["dark", "light", "system"]
 
 const ThemeProviderContext = React.createContext<
   ThemeProviderState | undefined
 >(undefined)
 
-function isTheme(value: string | null): value is Theme {
-  if (value === null) {
-    return false
+function readStored(key: string): Theme | null {
+  try {
+    const stored = localStorage.getItem(key)
+    return isTheme(stored) ? stored : null
+  } catch {
+    return null
   }
-
-  return THEME_VALUES.includes(value as Theme)
 }
 
-function getSystemTheme(): ResolvedTheme {
-  if (window.matchMedia(COLOR_SCHEME_QUERY).matches) {
-    return "dark"
-  }
-
-  return "light"
+function subscribeScheme(onChange: () => void) {
+  const query = window.matchMedia(COLOR_SCHEME_QUERY)
+  query.addEventListener("change", onChange)
+  return () => query.removeEventListener("change", onChange)
 }
 
-function disableTransitionsTemporarily() {
+const systemDark = () => window.matchMedia(COLOR_SCHEME_QUERY).matches
+
+/** Stops element transitions while theme colors swap, so nothing lags behind. */
+function withoutTransitions(run: () => void) {
   const style = document.createElement("style")
   style.appendChild(
     document.createTextNode(
@@ -46,14 +57,28 @@ function disableTransitionsTemporarily() {
     )
   )
   document.head.appendChild(style)
+  run()
+  window.getComputedStyle(document.body)
+  requestAnimationFrame(() => requestAnimationFrame(() => style.remove()))
+}
 
-  return () => {
-    window.getComputedStyle(document.body)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        style.remove()
-      })
-    })
+/**
+ * Applies a theme. When motion is on and the engine supports view
+ * transitions, the change cross-fades over the motion preset's duration.
+ */
+function showTheme(theme: ConcreteTheme, animate: boolean) {
+  const root = document.documentElement
+  const apply = () => withoutTransitions(() => applyThemeClasses(root, theme))
+  const motion = root.dataset.motion
+  if (
+    animate &&
+    motion !== undefined &&
+    motion !== "none" &&
+    typeof document.startViewTransition === "function"
+  ) {
+    document.startViewTransition(apply)
+  } else {
+    apply()
   }
 }
 
@@ -61,94 +86,46 @@ export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "theme",
-  disableTransitionOnChange = true,
   ...props
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = React.useState<Theme>(() => {
-    const storedTheme = localStorage.getItem(storageKey)
-    if (isTheme(storedTheme)) {
-      return storedTheme
-    }
+  const [theme, setThemeState] = React.useState<Theme>(
+    () => readStored(storageKey) ?? defaultTheme
+  )
+  const [preview, setPreview] = React.useState<Theme | null>(null)
+  const dark = React.useSyncExternalStore(subscribeScheme, systemDark)
+  const shown = resolveTheme(preview ?? theme, dark)
+  const applied = React.useRef<ConcreteTheme | null>(null)
 
-    return defaultTheme
-  })
+  React.useLayoutEffect(() => {
+    if (applied.current === shown) return
+    showTheme(shown, applied.current !== null)
+    applied.current = shown
+  }, [shown])
 
   const setTheme = React.useCallback(
-    (nextTheme: Theme) => {
-      localStorage.setItem(storageKey, nextTheme)
-      setThemeState(nextTheme)
+    (next: Theme) => {
+      try {
+        localStorage.setItem(storageKey, next)
+      } catch {
+        // Storage can be unavailable; the theme still applies this session.
+      }
+      setThemeState(next)
+      setPreview(null)
     },
     [storageKey]
   )
 
-  const applyTheme = React.useCallback(
-    (nextTheme: Theme) => {
-      const root = document.documentElement
-      const resolvedTheme =
-        nextTheme === "system" ? getSystemTheme() : nextTheme
-      const restoreTransitions = disableTransitionOnChange
-        ? disableTransitionsTemporarily()
-        : null
-
-      root.classList.remove("light", "dark")
-      root.classList.add(resolvedTheme)
-
-      if (restoreTransitions) {
-        restoreTransitions()
-      }
-    },
-    [disableTransitionOnChange]
-  )
-
-  React.useEffect(() => {
-    applyTheme(theme)
-
-    if (theme !== "system") {
-      return undefined
-    }
-
-    const mediaQuery = window.matchMedia(COLOR_SCHEME_QUERY)
-    const handleChange = () => {
-      applyTheme("system")
-    }
-
-    mediaQuery.addEventListener("change", handleChange)
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange)
-    }
-  }, [theme, applyTheme])
-
   React.useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.storageArea !== localStorage) {
-        return
-      }
-
-      if (event.key !== storageKey) {
-        return
-      }
-
-      if (isTheme(event.newValue)) {
-        setThemeState(event.newValue)
-        return
-      }
-
-      setThemeState(defaultTheme)
+      if (event.storageArea !== localStorage || event.key !== storageKey) return
+      setThemeState(isTheme(event.newValue) ? event.newValue : defaultTheme)
     }
-
     window.addEventListener("storage", handleStorageChange)
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange)
-    }
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [defaultTheme, storageKey])
 
   const value = React.useMemo(
-    () => ({
-      theme,
-      setTheme,
-    }),
+    () => ({ theme, setTheme, previewTheme: setPreview }),
     [theme, setTheme]
   )
 

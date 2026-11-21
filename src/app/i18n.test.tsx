@@ -42,7 +42,9 @@ describe("AC-009: English and Simplified Chinese interface", () => {
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("zh-CN")
     const nav = screen.getByRole("navigation", { name: "主导航" })
     expect(within(nav).getByRole("link", { name: "工作区" })).toBeVisible()
-    expect(screen.getByRole("group", { name: "主题" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "主题：跟随系统" })
+    ).toBeInTheDocument()
     expect(screen.getByText("自动换行")).toBeInTheDocument()
     expect(
       screen.getByRole("contentinfo", { name: "状态" })

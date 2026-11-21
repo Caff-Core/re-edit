@@ -9,6 +9,7 @@ import { FilePenLineIcon, PenLineIcon, SettingsIcon } from "lucide-react"
 
 import { AppStatus } from "@/app/app-status"
 import { appMessages } from "@/app/messages"
+import { MotionProvider } from "@/app/providers/motion-provider"
 import { AppWindowControls } from "@/app/app-window-controls"
 import {
   documentRegistry,
@@ -27,7 +28,9 @@ const APP_NAME = "re-edit"
 function RootLayout() {
   return (
     <LocaleProvider>
-      <RootContent />
+      <MotionProvider>
+        <RootContent />
+      </MotionProvider>
     </LocaleProvider>
   )
 }
