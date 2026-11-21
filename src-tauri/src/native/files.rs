@@ -243,18 +243,29 @@ pub fn write_text(
     ));
     let result = (|| {
         use std::os::unix::fs::OpenOptionsExt;
+        // An existing file keeps its permissions. The temporary file starts
+        // owner-only and takes the target's mode before any content is
+        // written, so a private document is never readable by others, even
+        // briefly. A new file gets the usual 0666 minus the umask.
+        let target_permissions = fs::metadata(path).ok().map(|m| m.permissions());
         let mut file = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
+            .mode(if target_permissions.is_some() {
+                0o600
+            } else {
+                0o666
+            })
             .custom_flags(libc::O_NOFOLLOW)
             .open(&temp)
             .map_err(|e| FileError::io(path, e))?;
+        if let Some(permissions) = target_permissions {
+            file.set_permissions(permissions)
+                .map_err(|e| FileError::io(path, e))?;
+        }
         file.write_all(content.as_bytes())
             .map_err(|e| FileError::io(path, e))?;
         file.sync_all().map_err(|e| FileError::io(path, e))?;
-        if let Ok(metadata) = fs::metadata(path) {
-            let _ = fs::set_permissions(&temp, metadata.permissions());
-        }
         fs::rename(&temp, path).map_err(|e| FileError::io(path, e))?;
         if let Ok(dir) = fs::File::open(folder) {
             let _ = dir.sync_all();
@@ -577,6 +588,26 @@ mod tests {
             .filter(|e| e.file_name().to_string_lossy().contains("re-edit-"))
             .count();
         assert_eq!(leftovers, 0);
+    }
+
+    #[test]
+    fn atomic_write_keeps_private_files_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tree();
+        let path = dir.path().join("private.md");
+        fs::write(&path, "secret").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        write_text(&path, "still secret", None).unwrap();
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // A new file follows the umask like any other created file.
+        let fresh = dir.path().join("fresh.md");
+        write_text(&fresh, "new", None).unwrap();
+        let mode = fs::metadata(&fresh).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode & 0o600, 0o600);
+        assert_eq!(mode & 0o111, 0);
     }
 
     #[test]
