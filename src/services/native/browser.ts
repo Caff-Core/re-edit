@@ -1,7 +1,9 @@
-import type { NativeService } from "./types"
+import { FileError, type NativeService } from "./types"
 
 const unavailable = () =>
-  Promise.reject(new Error("Files are available in the desktop app"))
+  Promise.reject(
+    new FileError("unavailable", "Files are available in the desktop app")
+  )
 
 /** Fallback used by `bun run dev` in a browser, where no host exists. */
 export const browserNativeService: NativeService = {
