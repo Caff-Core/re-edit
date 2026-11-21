@@ -1,0 +1,55 @@
+name: Package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "src-tauri/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/package.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fedora-rpm:
+    name: Fedora 44 RPM
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git gcc gcc-c++ make pkgconf-pkg-config file unzip \
+            webkit2gtk4.1-devel libsoup3-devel javascriptcoregtk4.1-devel \
+            gtk3-devel librsvg2-devel openssl-devel \
+            rpm desktop-file-utils
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Build RPM
+        run: bun tauri build --bundles rpm
+      - name: Inspect RPM
+        run: |
+          rpm_file=$(ls src-tauri/target/release/bundle/rpm/*.rpm)
+          rpm -qpi "$rpm_file"
+          rpm -qpR "$rpm_file"
+          rpm -qpl "$rpm_file"
+          mkdir -p /tmp/rpmroot && cd /tmp/rpmroot && rpm2cpio "$GITHUB_WORKSPACE/$rpm_file" | cpio -idm
+          desktop-file-validate /tmp/rpmroot/usr/share/applications/re-edit.desktop
+      - name: Install RPM
+        run: dnf install -y ./src-tauri/target/release/bundle/rpm/*.rpm && rpm -q re-edit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: re-edit-fedora44-rpm
+          path: src-tauri/target/release/bundle/rpm/*.rpm
+          if-no-files-found: error
