@@ -3,6 +3,9 @@ import type { Command } from "@codemirror/view"
 import {
   BoldIcon,
   CodeIcon,
+  Columns2Icon,
+  EyeIcon,
+  PenLineIcon,
   ItalicIcon,
   LinkIcon,
   Redo2Icon,
@@ -11,6 +14,8 @@ import {
   Undo2Icon,
 } from "lucide-react"
 import {
+  lazy,
+  Suspense,
   useCallback,
   useImperativeHandle,
   useRef,
@@ -30,6 +35,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Tooltip,
   TooltipContent,
@@ -49,6 +56,43 @@ import {
 import type { EditorStatus } from "../lib/extensions"
 import { SHORTCUTS } from "../lib/keymap"
 import { MarkdownEditor, type MarkdownEditorHandle } from "./markdown-editor"
+
+// The render pipeline and syntax grammars load only when a preview is shown.
+const MarkdownPreview = lazy(() =>
+  import("./markdown-preview").then((module) => ({
+    default: module.MarkdownPreview,
+  }))
+)
+
+function PreviewSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading preview"
+      className="flex flex-col gap-3 p-6"
+    >
+      <Skeleton className="h-5 w-1/2" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-5/6" />
+    </div>
+  )
+}
+
+export type ViewMode = "editor" | "split" | "preview"
+
+const VIEW_MODES: { value: ViewMode; label: string; icon: ReactNode }[] = [
+  {
+    value: "editor",
+    label: "Editor",
+    icon: <PenLineIcon aria-hidden="true" />,
+  },
+  { value: "split", label: "Split", icon: <Columns2Icon aria-hidden="true" /> },
+  { value: "preview", label: "Preview", icon: <EyeIcon aria-hidden="true" /> },
+]
+
+function isViewMode(value: string | undefined): value is ViewMode {
+  return VIEW_MODES.some((mode) => mode.value === value)
+}
 
 export type MarkdownDocumentProps = DocumentEditorProps
 
@@ -121,6 +165,8 @@ export function MarkdownDocument({
     inTable: false,
   })
   const [announcement, setAnnouncement] = useState("")
+  const [content, setContent] = useState(initialContent)
+  const [mode, setMode] = useState<ViewMode>("editor")
 
   const reportDirty = useCallback(
     (content: string) => {
@@ -143,6 +189,14 @@ export function MarkdownDocument({
       },
       focus: () => editor.current?.focus(),
     }),
+    [reportDirty]
+  )
+
+  const onContentChange = useCallback(
+    (next: string) => {
+      setContent(next)
+      reportDirty(next)
+    },
     [reportDirty]
   )
 
@@ -298,15 +352,62 @@ export function MarkdownDocument({
             <SearchIcon aria-hidden="true" />
           </ToolbarAction>
         </div>
+        <ToggleGroup
+          aria-label="View"
+          size="sm"
+          className="ml-auto"
+          value={[mode]}
+          onValueChange={(next) => {
+            const [value] = next
+            if (isViewMode(value)) setMode(value)
+          }}
+        >
+          {VIEW_MODES.map((option) => (
+            <Tooltip key={option.value}>
+              <TooltipTrigger
+                render={
+                  <ToggleGroupItem
+                    value={option.value}
+                    aria-label={option.label}
+                  />
+                }
+              >
+                {option.icon}
+              </TooltipTrigger>
+              <TooltipContent>{option.label}</TooltipContent>
+            </Tooltip>
+          ))}
+        </ToggleGroup>
       </div>
-      <MarkdownEditor
-        ref={editor}
-        initialValue={initialContent}
-        label={`${title}, Markdown source`}
-        onChange={reportDirty}
-        onStatusChange={onStatusChange}
-        onAnnounce={setAnnouncement}
-      />
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <div
+          hidden={mode === "preview"}
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+        >
+          <MarkdownEditor
+            ref={editor}
+            initialValue={initialContent}
+            label={`${title}, Markdown source`}
+            onChange={onContentChange}
+            onStatusChange={onStatusChange}
+            onAnnounce={setAnnouncement}
+          />
+        </div>
+        {mode === "editor" ? null : (
+          <section
+            aria-label="Preview"
+            className={
+              mode === "split"
+                ? "flex min-h-0 min-w-0 flex-1 flex-col border-l"
+                : "flex min-h-0 min-w-0 flex-1 flex-col"
+            }
+          >
+            <Suspense fallback={<PreviewSkeleton />}>
+              <MarkdownPreview source={content} title={title} />
+            </Suspense>
+          </section>
+        )}
+      </div>
       <div role="status" aria-live="polite" className="sr-only">
         {announcement}
       </div>

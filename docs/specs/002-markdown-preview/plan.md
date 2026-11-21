@@ -2,11 +2,11 @@
 
 ## Design
 
-Keep the TanStack parser, React renderer, code highlighting, math, and diagram support inside the Markdown feature. Apply the same URL policy to preview and export.
+Keep the unified Markdown pipeline, React renderer, code highlighting, math, and diagram support inside the Markdown feature. Apply the same URL policy to preview and export.
 
 ## Scaffold status
 
-Not started. Depends on 000.03 (CodeMirror base editor) and 001.02 (document registry).
+002.04 is in place: `src/features/markdown/lib/render/pipeline.ts` turns Markdown into a sanitized HTML tree (GFM, footnotes, highlighting; raw HTML dropped; links limited to http, https, mailto, and anchors; images to http and https). The preview renders that tree; export will serialize the same tree with `markdown.css`. Editor, preview, and split modes live in the document toolbar. Local images, math, and diagrams are 002.01 and 002.02.
 
 ## Verification
 

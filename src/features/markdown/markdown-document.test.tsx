@@ -1,5 +1,5 @@
 import { EditorView } from "@codemirror/view"
-import { act, render, screen } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createRef } from "react"
 import { describe, expect, it, vi } from "vitest"
@@ -200,5 +200,83 @@ describe("AC-001: format, replace, edit a table, then undo and redo by keyboard"
       await user.keyboard("{Control>}y{/Control}")
     }
     expect(doc()).toBe(edited)
+  })
+})
+
+describe("AC-003: editor, preview, and split modes", () => {
+  it("updates the preview while focus stays in the editor", async () => {
+    const user = userEvent.setup()
+    const { surface, view } = renderDocument(markdownFixture("basic"))
+    await user.click(screen.getByRole("button", { name: "Split" }))
+
+    const preview = await screen.findByRole("article", {
+      name: "Untitled, preview",
+    })
+    expect(
+      within(preview).getByRole("heading", { level: 1, name: "Heading one" })
+    ).toBeInTheDocument()
+    expect(within(preview).getByRole("table")).toBeInTheDocument()
+    expect(within(preview).getAllByRole("checkbox")).toHaveLength(2)
+
+    surface.focus()
+    act(() => {
+      view.dispatch({
+        changes: { from: 0, insert: "# Fresh title\n\n" },
+        userEvent: "input.type",
+      })
+    })
+    await waitFor(() =>
+      expect(
+        within(preview).getByRole("heading", { level: 1, name: "Fresh title" })
+      ).toBeInTheDocument()
+    )
+    expect(surface).toHaveFocus()
+  })
+
+  it("hides the editor in preview mode but keeps the buffer and history", async () => {
+    const user = userEvent.setup()
+    const { surface, view } = renderDocument("")
+    type(view, "# Kept")
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    expect(surface.closest("[hidden]")).not.toBeNull()
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Kept" })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Editor" }))
+    expect(screen.queryByRole("article")).not.toBeInTheDocument()
+    expect(view.state.doc.toString()).toBe("# Kept")
+    expect(screen.getByRole("button", { name: "Undo" })).toBeEnabled()
+  })
+
+  it("never puts active raw HTML in the preview DOM", async () => {
+    const user = userEvent.setup()
+    renderDocument(
+      'Text <img src=x onerror="window.__pwned=1"> <script>window.__pwned=1</script>'
+    )
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    const preview = await screen.findByRole("article")
+    expect(preview.querySelector("script, img, [onerror]")).toBeNull()
+    expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined()
+  })
+
+  it("keeps footnote links inside the preview", async () => {
+    const user = userEvent.setup()
+    renderDocument("Claim.[^1]\n\n[^1]: Source.")
+    await user.click(screen.getByRole("button", { name: "Preview" }))
+    const preview = await screen.findByRole("article")
+    const link = within(preview).getByRole("link", { name: "1" })
+    const clicked = new MouseEvent("click", { bubbles: true, cancelable: true })
+    link.dispatchEvent(clicked)
+    expect(clicked.defaultPrevented).toBe(true)
+  })
+
+  it("shows a note instead of an empty preview", async () => {
+    const user = userEvent.setup()
+    renderDocument("")
+    await user.click(screen.getByRole("button", { name: "Split" }))
+    expect(
+      await screen.findByText("Nothing to preview yet.")
+    ).toBeInTheDocument()
   })
 })
