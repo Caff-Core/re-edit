@@ -2,7 +2,7 @@
 
 ## Remaining work
 
-- [ ] 000.01 Add the Tauri 2 shell for Linux with a typed native service boundary. Check: `bun tauri dev` opens the app on Fedora 44.
+- [x] 000.01 Add the Tauri 2 shell for Linux with a typed native service boundary. Check: `bun tauri dev` opens the app on Fedora 44.
 - [ ] 000.02 Add TanStack Router with a root layout and app shell template. Check: routes render inside the shell and unknown routes show a not-found view.
 - [ ] 000.03 Add the CodeMirror 6 base editor inside the Markdown feature module. Check: a buffer edits, undoes, and redoes in the shell.
 - [ ] 000.04 Add Vitest with fixtures and run `bun run test` in CI. Check: CI fails on a failing test.
