@@ -32,6 +32,7 @@ pub fn run() {
             files::read_text_file,
             files::write_text_file,
             files::list_folder,
+            native::images::read_document_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running re-edit");
