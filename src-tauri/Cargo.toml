@@ -25,6 +25,4 @@ tauri-plugin-dialog = "2"
 libc = "0.2"
 base64 = "0.22"
 notify = "8"
-
-[dev-dependencies]
 tempfile = "3"

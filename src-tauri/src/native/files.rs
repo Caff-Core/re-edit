@@ -32,6 +32,10 @@ pub enum FileError {
     /// The file changed on disk since the version the editor knows.
     Conflict(String),
     Io(String),
+    /// No Chromium-based browser was found to render a PDF.
+    RendererMissing(String),
+    /// The PDF renderer failed, timed out, or produced no PDF.
+    RendererFailed(String),
 }
 
 impl FileError {
@@ -212,6 +216,15 @@ pub fn write_text(
     content: &str,
     expected_modified_ms: Option<u64>,
 ) -> Result<u64, FileError> {
+    write_bytes(path, content.as_bytes(), expected_modified_ms)
+}
+
+/// [`write_text`] for any bytes, such as a rendered PDF.
+pub fn write_bytes(
+    path: &Path,
+    content: &[u8],
+    expected_modified_ms: Option<u64>,
+) -> Result<u64, FileError> {
     // Commands pass canonical paths, so a symlink here means one was swapped
     // in after the scope check. Never replace or follow it.
     if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
@@ -263,7 +276,7 @@ pub fn write_text(
             file.set_permissions(permissions)
                 .map_err(|e| FileError::io(path, e))?;
         }
-        file.write_all(content.as_bytes())
+        file.write_all(content)
             .map_err(|e| FileError::io(path, e))?;
         file.sync_all().map_err(|e| FileError::io(path, e))?;
         fs::rename(&temp, path).map_err(|e| FileError::io(path, e))?;
