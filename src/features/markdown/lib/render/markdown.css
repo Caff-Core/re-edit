@@ -26,6 +26,20 @@
   --md-syntax-comment: var(--muted-foreground);
 }
 
+.theme-solarized-light .markdown-body {
+  --md-syntax-keyword: #5a5eaf;
+  --md-syntax-string: #5c6d00;
+  --md-syntax-number: #0069ae;
+  --md-syntax-title: #b93a00;
+}
+
+.theme-solarized-dark .markdown-body {
+  --md-syntax-keyword: #9ca3e8;
+  --md-syntax-string: #9eb14a;
+  --md-syntax-number: #68aee8;
+  --md-syntax-title: #ec9071;
+}
+
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
 
