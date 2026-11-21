@@ -59,7 +59,7 @@ describe("standalone HTML export", () => {
     )
     expect(html).toContain("<title>Notes &lt;draft&gt;</title>")
     expect(html).toContain(
-      `content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"`
+      `content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'"`
     )
     expect(html).toContain("--background: #002b36;")
     expect(html).toContain(".markdown-body { color: var(--foreground); }")
@@ -74,6 +74,34 @@ describe("standalone HTML export", () => {
       options({ tokens: { background: "red; } body { display: none" } })
     )
     expect(html).toContain("@page { margin: 18mm 16mm; }")
+  })
+
+  it("embeds KaTeX's styles and keeps its rendering when the document has math", async () => {
+    let loads = 0
+    const loadMathCss = async () => {
+      loads++
+      return ".katex { font: normal 1.21em KaTeX_Main; }"
+    }
+    const html = await markdownToStandaloneHtml(
+      SOURCE,
+      options({ loadMathCss })
+    )
+    expect(loads).toBe(1)
+    expect(html).toContain(".katex { font: normal 1.21em KaTeX_Main; }")
+    expect(html).toContain("katex-html")
+    expect(html).toContain("<math")
+
+    await markdownToStandaloneHtml("No math here.", options({ loadMathCss }))
+    expect(loads).toBe(1)
+  })
+
+  it("falls back to MathML when KaTeX's styles cannot load", async () => {
+    const html = await markdownToStandaloneHtml(
+      SOURCE,
+      options({ loadMathCss: () => Promise.reject(new Error("offline")) })
+    )
+    expect(html).toContain("<math")
+    expect(html).not.toContain("katex-html")
   })
 
   it("keeps math as MathML without the font-dependent HTML copy", async () => {
