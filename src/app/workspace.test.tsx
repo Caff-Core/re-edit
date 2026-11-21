@@ -432,3 +432,83 @@ describe("AC-006: changes on disk keep both versions; failed writes keep the buf
     ).not.toBeInTheDocument()
   })
 })
+
+describe("AC-010/AC-011 base: export to HTML and PDF", () => {
+  async function newMarkdown(files: MemoryFileService) {
+    const user = userEvent.setup()
+    renderWorkspace(files)
+    await user.click(
+      await screen.findByRole("button", { name: "New Markdown document" })
+    )
+    const view = await markdownView("Untitled")
+    typeInto(view, "# Report\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n$x^2$\n")
+    return { user, view }
+  }
+
+  async function exportAs(
+    user: ReturnType<typeof userEvent.setup>,
+    item: string
+  ) {
+    await user.click(screen.getByRole("button", { name: "File" }))
+    await user.click(await screen.findByRole("menuitem", { name: item }))
+  }
+
+  it("exports an unsaved buffer as standalone HTML", async () => {
+    const files = new MemoryFileService()
+    files.nextExportPath = "/out/report"
+    const { user } = await newMarkdown(files)
+
+    await exportAs(user, "Export as HTML…")
+    expect(await screen.findByText("Exported report.html.")).toBeInTheDocument()
+    const html = files.files.get("/out/report.html") ?? ""
+    expect(html).toMatch(/^<!doctype html>/)
+    expect(html).toContain("<title>Untitled</title>")
+    expect(html).toContain("Content-Security-Policy")
+    expect(html).toContain("<h1>Report</h1>")
+    expect(html).toContain("<table>")
+    expect(html).toContain("<math")
+    expect(html).not.toContain("<script")
+    // The buffer stays unsaved; exporting is not saving.
+    expect(tab("Untitled, unsaved changes")).toBeInTheDocument()
+  })
+
+  it("exports the same document to PDF without touching the buffer", async () => {
+    const files = new MemoryFileService()
+    files.nextExportPath = "/out/report.pdf"
+    const { user, view } = await newMarkdown(files)
+
+    await exportAs(user, "Export as PDF…")
+    expect(await screen.findByText("Exported report.pdf.")).toBeInTheDocument()
+    expect(files.pdfs.get("/out/report.pdf")).toContain("<h1>Report</h1>")
+    expect(view.state.doc.toString()).toContain("# Report")
+  })
+
+  it("changes nothing when the destination chooser is cancelled", async () => {
+    const files = new MemoryFileService()
+    files.nextExportPath = null
+    const { user } = await newMarkdown(files)
+
+    await exportAs(user, "Export as PDF…")
+    expect(files.pdfs.size).toBe(0)
+    expect(files.files.size).toBe(0)
+    expect(screen.queryByRole("alert")).toBeNull()
+  })
+
+  it("reports a renderer failure and keeps the destination and buffer", async () => {
+    const files = new MemoryFileService()
+    files.files.set("/out/report.pdf", "previous export")
+    files.nextExportPath = "/out/report.pdf"
+    files.failExports = 1
+    const { user, view } = await newMarkdown(files)
+
+    await exportAs(user, "Export as PDF…")
+    expect(
+      await screen.findByText(
+        "Could not export report.pdf: The PDF could not be rendered. The destination was not changed."
+      )
+    ).toBeInTheDocument()
+    expect(files.files.get("/out/report.pdf")).toBe("previous export")
+    expect(files.pdfs.size).toBe(0)
+    expect(view.state.doc.toString()).toContain("# Report")
+  })
+})

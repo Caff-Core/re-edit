@@ -58,6 +58,28 @@ export class MemoryFileService implements FileService {
     return this.nextFolder
   }
 
+  /** Export destination; the extension is added like the host does. */
+  nextExportPath: string | null = null
+  /** Number of upcoming PDF renders that fail. */
+  failExports = 0
+  /** Rendered PDFs, keyed by path, holding the HTML they were made from. */
+  readonly pdfs = new Map<string, string>()
+
+  async pickExportPath(_suggestedName: string, format: "html" | "pdf") {
+    const path = this.nextExportPath
+    if (path === null) return null
+    return /\.(html?|pdf)$/i.test(path) ? path : `${path}.${format}`
+  }
+
+  async exportPdf(path: string, html: string) {
+    if (this.failExports > 0) {
+      this.failExports--
+      throw new FileError("rendererFailed", "the renderer exited with 1")
+    }
+    this.pdfs.set(path, html)
+    return ++this.clock
+  }
+
   async pickSavePath(suggestedName: string) {
     return typeof this.nextSavePath === "function"
       ? this.nextSavePath(suggestedName)

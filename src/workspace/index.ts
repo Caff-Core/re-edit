@@ -12,6 +12,8 @@ export {
 export type {
   DocumentEditorHandle,
   DocumentEditorProps,
+  DocumentExportContext,
+  DocumentExporter,
   DocumentType,
   OpenDocument,
 } from "./types"

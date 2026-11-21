@@ -105,6 +105,9 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
   const [closing, setClosing] = useState<string | null>(null)
   const closingDocument = documents.find((d) => d.id === closing)
   const active = documents.find((d) => d.id === activeId)
+  const canExport =
+    active !== undefined &&
+    workspace.registry.get(active.typeId)?.exporter !== undefined
 
   const requestClose = (id: string) => {
     const document = documents.find((d) => d.id === id)
@@ -231,6 +234,25 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
           >
             {t.saveAsMenu}
             <DropdownMenuShortcut>{FILE_SHORTCUTS.saveAs}</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            disabled={!canExport}
+            onClick={() =>
+              active && void workspace.exportDocument(active.id, "html")
+            }
+          >
+            {t.exportHtml}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={!canExport}
+            onClick={() =>
+              active && void workspace.exportDocument(active.id, "pdf")
+            }
+          >
+            {t.exportPdf}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
