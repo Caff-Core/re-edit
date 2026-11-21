@@ -53,6 +53,7 @@ pub fn render_pdf(renderer: &Path, html: &str, timeout: Duration) -> Result<Vec<
     let page = work.path().join("document.html");
     let output = work.path().join("document.pdf");
     let profile = work.path().join("profile");
+    let log = work.path().join("renderer.log");
     fs::File::create(&page)
         .and_then(|mut file| file.write_all(html.as_bytes()))
         .map_err(|e| failed(format!("temporary page: {e}")))?;
@@ -79,7 +80,12 @@ pub fn render_pdf(renderer: &Path, html: &str, timeout: Duration) -> Result<Vec<
         .arg(format!("file://{}", page.display()))
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        // A file, not a pipe: a chatty renderer can never block on it.
+        .stderr(
+            fs::File::create(&log)
+                .map(Stdio::from)
+                .unwrap_or_else(|_| Stdio::null()),
+        )
         .spawn()
         .map_err(|e| failed(format!("{}: {e}", renderer.display())))?;
 
@@ -100,13 +106,28 @@ pub fn render_pdf(renderer: &Path, html: &str, timeout: Duration) -> Result<Vec<
         }
     };
     if !status.success() {
-        return Err(failed(format!("the renderer exited with {status}")));
+        return Err(failed(format!(
+            "the renderer exited with {status}{}",
+            last_lines(&log)
+        )));
     }
     let bytes = fs::read(&output).map_err(|_| failed("the renderer wrote no PDF".into()))?;
     if !bytes.starts_with(b"%PDF-") {
         return Err(failed("the renderer output is not a PDF".into()));
     }
     Ok(bytes)
+}
+
+/// The renderer's last log lines, to explain a failure.
+fn last_lines(log: &Path) -> String {
+    let text = fs::read_to_string(log).unwrap_or_default();
+    let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+    let tail = &lines[lines.len().saturating_sub(3)..];
+    if tail.is_empty() {
+        String::new()
+    } else {
+        format!(": {}", tail.join(" | "))
+    }
 }
 
 /// Renders `html` and writes the PDF to `target` only when rendering worked.
@@ -239,6 +260,21 @@ mod tests {
             );
             assert_eq!(fs::read_to_string(&target).unwrap(), "original");
         }
+    }
+
+    #[test]
+    fn explains_a_failure_with_the_renderer_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let renderer = fake_renderer(
+            dir.path(),
+            "echo noise >&2\necho 'No usable sandbox!' >&2\nexit 1",
+        );
+        let Err(FileError::RendererFailed(message)) =
+            render_pdf(&renderer, "<p>x</p>", Duration::from_secs(5))
+        else {
+            panic!("expected a renderer failure");
+        };
+        assert!(message.contains("No usable sandbox!"), "{message}");
     }
 
     #[test]

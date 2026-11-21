@@ -1,5 +1,8 @@
 mod native;
 
+/// PDF rendering, shared with the `render_pdf` example the packaging job runs.
+pub use native::export::{RENDER_TIMEOUT, export_pdf_to, find_renderer};
+
 use tauri::Manager;
 
 use native::files::{self, FileScope};

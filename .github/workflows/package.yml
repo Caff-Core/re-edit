@@ -8,6 +8,8 @@ on:
       - "src-tauri/**"
       - "package.json"
       - "bun.lock"
+      - "scripts/export-sample.ts"
+      - "src/features/markdown/lib/render/**"
       - ".github/workflows/package.yml"
   workflow_dispatch:
 
@@ -18,7 +20,11 @@ jobs:
   fedora-rpm:
     name: Fedora 44 RPM
     runs-on: ubuntu-latest
-    container: fedora:44
+    container:
+      image: fedora:44
+      # Chromium's setuid sandbox helper creates namespaces, which needs
+      # CAP_SYS_ADMIN and unshare, both withheld from containers by default.
+      options: --cap-add SYS_ADMIN --security-opt seccomp=unconfined
     steps:
       - name: Install build dependencies
         run: |
@@ -43,11 +49,49 @@ jobs:
           rpm_file=$(ls src-tauri/target/release/bundle/rpm/*.rpm)
           rpm -qpi "$rpm_file"
           rpm -qpR "$rpm_file"
+          rpm -qp --recommends "$rpm_file" | grep -qx chromium
           rpm -qpl "$rpm_file"
           mkdir -p /tmp/rpmroot && cd /tmp/rpmroot && rpm2cpio "$GITHUB_WORKSPACE/$rpm_file" | cpio -idm
           desktop-file-validate /tmp/rpmroot/usr/share/applications/re-edit.desktop
       - name: Install RPM
         run: dnf install -y ./src-tauri/target/release/bundle/rpm/*.rpm && rpm -q re-edit
+      - name: PDF export with Fedora's Chromium
+        run: |
+          # The container disables weak dependencies; a desktop install pulls
+          # Chromium in through the RPM's Recommends.
+          dnf install -y chromium poppler-utils
+          # The runner host blocks unprivileged user namespaces, so Chromium
+          # uses its setuid sandbox helper, which needs mode 4755 inside the
+          # container. The renderer stays sandboxed; the app never passes
+          # --no-sandbox. Fedora desktops use the namespace sandbox instead.
+          chmod 4755 /usr/lib64/chromium-browser/chrome-sandbox
+          mkdir -p /tmp/export
+          bun scripts/export-sample.ts /tmp/export/sample.html
+          (cd src-tauri && cargo build --release --example render_pdf)
+          renderer="$PWD/src-tauri/target/release/examples/render_pdf"
+          # Chromium refuses to run as root with its sandbox on; use a user.
+          useradd -m exporter
+          chown -R exporter /tmp/export
+          runuser -u exporter -- "$renderer" /tmp/export/sample.html /tmp/export/sample.pdf
+          pdfinfo /tmp/export/sample.pdf
+          pages=$(pdfinfo /tmp/export/sample.pdf | awk '/^Pages:/ {print $2}')
+          test "$pages" -ge 5
+          pdftotext /tmp/export/sample.pdf - | grep -q "Section 24"
+          pdftotext /tmp/export/sample.pdf - | grep -q "End of sample"
+          pdffonts /tmp/export/sample.pdf | grep -q KaTeX_Main
+          # A failing renderer must leave an existing destination untouched.
+          echo previous > /tmp/export/keep.pdf
+          chown exporter /tmp/export/keep.pdf
+          if runuser -u exporter -- env RE_EDIT_CHROMIUM=/usr/bin/false "$renderer" /tmp/export/sample.html /tmp/export/keep.pdf; then
+            echo "a failing renderer reported success"; exit 1
+          fi
+          test "$(cat /tmp/export/keep.pdf)" = previous
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: re-edit-export-sample
+          path: /tmp/export/sample.pdf
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: re-edit-fedora44-rpm
