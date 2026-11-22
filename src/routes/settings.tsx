@@ -48,6 +48,12 @@ const THEME_LABELS: Record<Theme, keyof AppMessages> = {
   dark: "themeDark",
   "solarized-light": "themeSolarizedLight",
   "solarized-dark": "themeSolarizedDark",
+  dracula: "themeDracula",
+  nord: "themeNord",
+  "gruvbox-light": "themeGruvboxLight",
+  "gruvbox-dark": "themeGruvboxDark",
+  "catppuccin-latte": "themeCatppuccinLatte",
+  "catppuccin-mocha": "themeCatppuccinMocha",
 }
 
 const MOTION_LABELS = {

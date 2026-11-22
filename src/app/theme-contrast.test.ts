@@ -147,6 +147,12 @@ describe("AC-009: theme contrast", () => {
         ".dark",
         ".theme-solarized-light",
         ".theme-solarized-dark",
+        ".theme-dracula",
+        ".theme-nord",
+        ".theme-gruvbox-light",
+        ".theme-gruvbox-dark",
+        ".theme-catppuccin-latte",
+        ".theme-catppuccin-mocha",
       ])
     )
   })

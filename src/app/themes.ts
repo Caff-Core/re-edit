@@ -5,6 +5,12 @@ export const THEMES = [
   "dark",
   "solarized-light",
   "solarized-dark",
+  "dracula",
+  "nord",
+  "gruvbox-light",
+  "gruvbox-dark",
+  "catppuccin-latte",
+  "catppuccin-mocha",
 ] as const
 
 export type Theme = (typeof THEMES)[number]
@@ -20,6 +26,12 @@ export const THEME_CLASSES: Record<
   dark: { scheme: "dark", palette: null },
   "solarized-light": { scheme: "light", palette: "theme-solarized-light" },
   "solarized-dark": { scheme: "dark", palette: "theme-solarized-dark" },
+  dracula: { scheme: "dark", palette: "theme-dracula" },
+  nord: { scheme: "dark", palette: "theme-nord" },
+  "gruvbox-light": { scheme: "light", palette: "theme-gruvbox-light" },
+  "gruvbox-dark": { scheme: "dark", palette: "theme-gruvbox-dark" },
+  "catppuccin-latte": { scheme: "light", palette: "theme-catppuccin-latte" },
+  "catppuccin-mocha": { scheme: "dark", palette: "theme-catppuccin-mocha" },
 }
 
 const ALL_CLASSES = [

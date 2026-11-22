@@ -40,6 +40,48 @@
   --md-syntax-title: #ec9071;
 }
 
+.theme-dracula .markdown-body {
+  --md-syntax-keyword: #ff79c6;
+  --md-syntax-string: #f1fa8c;
+  --md-syntax-number: #bd93f9;
+  --md-syntax-title: #50fa7b;
+}
+
+.theme-nord .markdown-body {
+  --md-syntax-keyword: #92b3d3;
+  --md-syntax-string: #a3be8c;
+  --md-syntax-number: #cba4c4;
+  --md-syntax-title: #ebcb8b;
+}
+
+.theme-gruvbox-dark .markdown-body {
+  --md-syntax-keyword: #fd7e6a;
+  --md-syntax-string: #b8bb26;
+  --md-syntax-number: #db8da2;
+  --md-syntax-title: #8ec07c;
+}
+
+.theme-gruvbox-light .markdown-body {
+  --md-syntax-keyword: #9d0006;
+  --md-syntax-string: #676207;
+  --md-syntax-number: #8f3f71;
+  --md-syntax-title: #a93b0c;
+}
+
+.theme-catppuccin-latte .markdown-body {
+  --md-syntax-keyword: #8535ec;
+  --md-syntax-string: #207704;
+  --md-syntax-number: #b34302;
+  --md-syntax-title: #135cea;
+}
+
+.theme-catppuccin-mocha .markdown-body {
+  --md-syntax-keyword: #cba6f7;
+  --md-syntax-string: #a6e3a1;
+  --md-syntax-number: #fab387;
+  --md-syntax-title: #89b4fa;
+}
+
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
 
