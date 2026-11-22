@@ -39,7 +39,7 @@ export interface DocumentEditorHandle {
    * and records it as saved. Throws an UnsupportedDocumentError when the
    * bytes cannot be loaded; the document is then unchanged.
    */
-  replaceContent(bytes: Uint8Array): void
+  replaceContent(bytes: Uint8Array): void | Promise<void>
   /** A string the type's `fromDraft` can restore unsaved work from. */
   draft(): string
   /** Runs a routed command. Returns false when the editor does not support it. */
@@ -107,11 +107,13 @@ export interface DocumentType<D = unknown> {
   /** Largest file this type opens, in bytes. Defaults to 20 MB; the host caps it at 200 MB. */
   maxBytes?: number
   /**
-   * Decodes a file. Throws an UnsupportedDocumentError when the file cannot
-   * be edited without changing or losing parts of it.
+   * Decodes a file. Throws (or rejects with) an UnsupportedDocumentError when
+   * the file cannot be edited without changing or losing parts of it. May be
+   * async for formats whose engine starts asynchronously, such as PDF.
    */
-  load(bytes: Uint8Array): D
-  createEmpty(): D
+  load(bytes: Uint8Array): D | Promise<D>
+  /** A new, empty document. Absent for formats that cannot start empty, such as PDF. */
+  createEmpty?(): D
   /** Restores unsaved work from `draft()`, given the saved version (or an empty document). */
   fromDraft(draft: string, saved: D): D
   /** Defaults to "in-place". */

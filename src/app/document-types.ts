@@ -1,5 +1,8 @@
 import { markdownDocumentType } from "@/features/markdown"
+import { pdfDocumentType } from "@/features/pdf"
 import { nativeService, type FileService } from "@/services/native"
+
+import samplePdfUrl from "./samples/form-sample.pdf?url"
 import {
   createDocumentRegistry,
   localSessionStore,
@@ -7,7 +10,10 @@ import {
 } from "@/workspace"
 
 /** Document types the app can open. Add a feature's type here to register it. */
-export const documentRegistry = createDocumentRegistry([markdownDocumentType])
+export const documentRegistry = createDocumentRegistry([
+  markdownDocumentType,
+  pdfDocumentType,
+])
 
 /**
  * The browser build has no disk access, so `bun run dev` in a browser works
@@ -22,6 +28,13 @@ function browserSampleFiles(): FileService {
     "/samples/notes/todo.md":
       "# To do\n\n- [ ] Open a real folder in the desktop app\n",
   })
+  // A fillable sample PDF, so the PDF editor can be tried without a disk.
+  void fetch(samplePdfUrl)
+    .then((response) => response.arrayBuffer())
+    .then((buffer) =>
+      files.bytes.set("/samples/form.pdf", new Uint8Array(buffer))
+    )
+    .catch(() => {})
   files.nextFolder = "/samples"
   files.nextOpenFile = "/samples/welcome.md"
   files.nextSavePath = (name) => `/samples/${name}`

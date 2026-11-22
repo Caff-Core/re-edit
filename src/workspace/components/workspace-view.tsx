@@ -101,7 +101,8 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
   const { locale } = useLocale()
   const describe = useDescribeError()
   const { documents, activeId } = workspace.state
-  const types = workspace.registry.list()
+  /** Types that can start a new, empty document (PDF cannot). */
+  const types = workspace.registry.list().filter((type) => type.createEmpty)
   /** Tabs waiting on the discard prompt, in tab order. */
   const [closing, setClosing] = useState<string[] | null>(null)
   const unsavedClosing = documents.filter(
@@ -605,7 +606,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (reloading) workspace.reloadFromDisk(reloading)
+                if (reloading) void workspace.reloadFromDisk(reloading)
                 setReloading(null)
               }}
             >

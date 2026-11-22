@@ -18,12 +18,12 @@ Deferred for the first release: replacing existing page text and images, optical
 
 ## Verification status
 
-Planned. Nothing recorded yet.
+Automated checks ran on 2026-11-22 (Vitest with PDFium on Fedora 44, plus a headless Chromium run of the browser build); the packaged walkthrough (007.07) has not run yet.
 
-| Acceptance | Result |
-|---|---|
-| AC-015 | Planned |
-| AC-016 | Planned |
-| AC-017 | Planned |
-| AC-018 | Planned |
-| AC-019 | Planned |
+| Acceptance | Automated | Packaged Fedora 44 |
+|---|---|---|
+| AC-015 | Pass: encrypted (owner and user password) and damaged files refused, pages and fields read (`lib/pdfium.test.ts`); encrypted file opens no tab (`pdf-editor.test.tsx`). Thumbnails, zoom, and page navigation seen in the browser build | Not run yet |
+| AC-016 | Pass: text box and comment added, edited, moved, deleted, and undone by keyboard, saved as FreeText and Text annotations on the scanned page (`pdf-editor.test.tsx`); highlight quads follow the text (`lib/model.test.ts`); highlight dragged across text in the browser build | Not run yet |
+| AC-017 | Pass: text, checkbox, radio, and dropdown values saved and read back (`lib/pdfium.test.ts`, `pdf-editor.test.tsx`); list box explained as unsupported and kept | Not run yet |
+| AC-018 | Pass: keyboard rotate, move, and delete with the last-page guard (`pdf-editor.test.tsx`); page identity through moves and deletes (`lib/model.test.ts`) | Not run yet |
+| AC-019 | Pass: edited copy reopened with PDFium with the right order, rotation, fields, and annotations per page, and a byte-identical source (`lib/pdfium.test.ts`, `pdf-editor.test.tsx`); the spike checked the same copy with MuPDF, poppler, Ghostscript, and pdf.js. Cancelled and failed saves use the shared 006 paths | Not run yet (needs an independent viewer: Evince or Okular) |

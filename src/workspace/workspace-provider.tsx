@@ -87,7 +87,7 @@ export interface WorkspaceApi {
   /** Dismiss a conflict and go on editing; the next save asks again. */
   keepEditing(id: string): void
   /** Resolve a conflict by loading the disk version (undoable). Ask first. */
-  reloadFromDisk(id: string): void
+  reloadFromDisk(id: string): Promise<void>
   /** Resolve a conflict by saving the buffer to a new path. */
   saveCopy(id: string): Promise<boolean>
   /** Routed commands each document supports, and whether they can run now. */
@@ -243,7 +243,8 @@ export function WorkspaceProvider({
   const newDocument = useCallback(
     (typeId: string) => {
       const type = registry.get(typeId)
-      if (!type) throw new Error(`Unknown document type "${typeId}"`)
+      if (!type?.createEmpty)
+        throw new Error(`Document type "${typeId}" cannot create documents`)
       const empty = type.createEmpty()
       openDocument(
         {
@@ -285,7 +286,7 @@ export function WorkspaceProvider({
       try {
         const file = await files.readFile(path, type.maxBytes)
         // An unsupported file throws here, before any tab exists.
-        const document = type.load(file.bytes)
+        const document = await type.load(file.bytes)
         openDocument(
           {
             id: nextId(),
@@ -519,7 +520,7 @@ export function WorkspaceProvider({
       }
       if (!document.dirty) {
         try {
-          editor.replaceContent(file.bytes)
+          await editor.replaceContent(file.bytes)
         } catch (error) {
           // The new version cannot be loaded: keep the tab as it was.
           setNotice({
@@ -571,13 +572,13 @@ export function WorkspaceProvider({
   }, [files, watchKey])
 
   const reloadFromDisk = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const conflict = conflicts[id]
       const editor = editors.current.get(id)
       const document = stateRef.current.documents.find((d) => d.id === id)
       if (!conflict || conflict.disk === null || !editor || !document) return
       try {
-        editor.replaceContent(conflict.disk)
+        await editor.replaceContent(conflict.disk)
       } catch (error) {
         setNotice({
           tone: "error",
@@ -687,19 +688,23 @@ export function WorkspaceProvider({
           try {
             const file = await files.readFile(saved.path, type.maxBytes)
             onDisk = {
-              document: type.load(file.bytes),
+              document: await type.load(file.bytes),
               bytes: file.bytes,
               modifiedMs: file.modifiedMs,
             }
           } catch (error) {
-            if (saved.draft === null) {
+            // Without the file, a draft can only come back for a type that
+            // can start from an empty document.
+            if (saved.draft === null || !type.createEmpty) {
               failures.push({ title: saved.title, error })
               continue
             }
             missing = true
           }
         }
-        const savedDocument = onDisk?.document ?? type.createEmpty()
+        const empty = type.createEmpty?.()
+        if (!onDisk && empty === undefined) continue
+        const savedDocument = onDisk?.document ?? empty
         const changedSince =
           saved.draft !== null &&
           onDisk !== null &&

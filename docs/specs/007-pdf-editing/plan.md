@@ -49,6 +49,17 @@ Both need a content security policy change in `tauri.conf.json`: A a worker sour
 - **Interface.** A thumbnail rail (listbox: arrow keys move, Alt+Up/Down reorder, R rotates, Delete removes, menu on each thumbnail), a page view with zoom, and a tool bar (Select, Highlight, Comment, Text box). Format controls stay in the feature; shared controls come from shadcn/ui and ReUI.
 - **Limits.** 200 MB per file. Encrypted, broken, or unsupported files throw `UnsupportedDocument` with the reason.
 
+## Scaffold status
+
+After 007.02 to 007.06 (2026-11-22): `src/features/pdf` registers `.pdf` with Save Edited Copy and a 200 MB limit. `lib/model.ts` holds the operation log, `lib/pdfium.ts` is the only module that calls PDFium, and `lib/geometry.ts` maps page coordinates through rotation. The editor shows a thumbnail listbox, one page at a time with zoom from 50% to 300%, the editor's annotations and form fields over PDFium's rendering, and announcements in a polite live region. PDFium and its WebAssembly load with the first PDF; the content security policy now allows `'wasm-unsafe-eval'`. The browser build includes a sample form PDF.
+
+Known limits of this release, recorded rather than hidden:
+
+- Highlights need a pointer drag; there is no keyboard way to choose text yet. Comments and text boxes can be added, moved, edited, and deleted by keyboard.
+- Only annotations added in the editor can be selected and edited; annotations already in the file are kept as they are.
+- PDFium runs on the main thread; very large pages may pause the interface briefly while they render.
+- Reloading a PDF that changed on disk starts a new edit history on the new version (it cannot be undone, unlike text documents).
+
 ## Verification
 
 Planned checks: the engine spike above; unit tests for the operation log (page identity through reorder and delete, undo and redo, dirty tracking, draft restore); round-trip tests on fixtures checked with poppler and qpdf in CI; keyboard tests for page tools and annotations. The packaged Fedora 44 check opens the saved copy in an independent viewer (Evince or Okular) and covers native dialogs and binary saves.
