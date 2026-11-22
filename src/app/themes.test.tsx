@@ -74,6 +74,7 @@ describe("AC-007: theme catalog and preview", () => {
       "Gruvbox Dark",
       "Catppuccin Latte",
       "Catppuccin Mocha",
+      "Neon",
     ])
 
     // Rapid previews: each highlight shows its theme right away.
@@ -193,6 +194,7 @@ describe("004.01: preview, dismissal, focus, and persistence across themes", () 
     ["Solarized Dark", "solarized-dark", ["dark", "theme-solarized-dark"]],
     ["Dracula", "dracula", ["dark", "theme-dracula"]],
     ["Gruvbox Light", "gruvbox-light", ["light", "theme-gruvbox-light"]],
+    ["Neon", "neon", ["dark", "theme-neon"]],
     ["System", "system", ["light"]],
   ] as const)(
     "keeps %s across a restart after previewing others",

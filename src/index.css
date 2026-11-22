@@ -327,6 +327,37 @@
     --sidebar-ring: #7f849c;
 }
 
+/* Neon: saturated magenta, cyan, green, and yellow on a near-black blue. */
+.theme-neon {
+    color-scheme: dark;
+    --background: #0a0a14;
+    --foreground: #e8f4ff;
+    --card: #10101e;
+    --card-foreground: #e8f4ff;
+    --popover: #10101e;
+    --popover-foreground: #e8f4ff;
+    --primary: #ff2bd6;
+    --primary-foreground: #0a0a14;
+    --secondary: #1a1a30;
+    --secondary-foreground: #e8f4ff;
+    --muted: #1a1a30;
+    --muted-foreground: #8ccfe6;
+    --accent: #262645;
+    --accent-foreground: #e8f4ff;
+    --destructive: #ff4d6d;
+    --border: #2b2b4d;
+    --input: #3a3a66;
+    --ring: #00e5ff;
+    --sidebar: #07070f;
+    --sidebar-foreground: #e8f4ff;
+    --sidebar-primary: #ff2bd6;
+    --sidebar-primary-foreground: #0a0a14;
+    --sidebar-accent: #1a1a30;
+    --sidebar-accent-foreground: #e8f4ff;
+    --sidebar-border: #2b2b4d;
+    --sidebar-ring: #00e5ff;
+}
+
 /*
  * Motion presets (REQ-008), set as data-motion on <html> by MotionProvider.
  * None also applies when the system asks for reduced motion.

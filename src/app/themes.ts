@@ -11,6 +11,7 @@ export const THEMES = [
   "gruvbox-dark",
   "catppuccin-latte",
   "catppuccin-mocha",
+  "neon",
 ] as const
 
 export type Theme = (typeof THEMES)[number]
@@ -32,6 +33,7 @@ export const THEME_CLASSES: Record<
   "gruvbox-dark": { scheme: "dark", palette: "theme-gruvbox-dark" },
   "catppuccin-latte": { scheme: "light", palette: "theme-catppuccin-latte" },
   "catppuccin-mocha": { scheme: "dark", palette: "theme-catppuccin-mocha" },
+  neon: { scheme: "dark", palette: "theme-neon" },
 }
 
 const ALL_CLASSES = [

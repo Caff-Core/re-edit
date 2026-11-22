@@ -82,6 +82,13 @@
   --md-syntax-title: #89b4fa;
 }
 
+.theme-neon .markdown-body {
+  --md-syntax-keyword: #ff4fe0;
+  --md-syntax-string: #f5ff3d;
+  --md-syntax-number: #00e5ff;
+  --md-syntax-title: #39ff14;
+}
+
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
 
