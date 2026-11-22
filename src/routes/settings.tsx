@@ -3,6 +3,11 @@ import { ChevronDownIcon, LanguagesIcon } from "lucide-react"
 
 import { LANGUAGE_NAMES, appMessages } from "@/app/messages"
 import {
+  INTERFACE_SIZES,
+  isInterfaceSize,
+  useInterfaceSize,
+} from "@/app/providers/interface-size-provider"
+import {
   MOTION_PRESETS,
   isMotionPreset,
   useMotion,
@@ -106,6 +111,7 @@ function Settings() {
   const t = useMessages(appMessages)
   const { preference, setPreference } = useLocale()
   const { motion, reducedMotion, setMotion } = useMotion()
+  const { size, setSize } = useInterfaceSize()
 
   return (
     <div className="flex max-w-2xl min-w-0 flex-col gap-6 p-6">
@@ -122,6 +128,32 @@ function Settings() {
         <div className="flex items-center justify-between gap-4">
           <span className="text-sm font-medium">{t.theme}</span>
           <ThemeMenu />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span id="size-label" className="text-sm font-medium">
+              {t.interfaceSize}
+            </span>
+            <p className="text-xs text-muted-foreground">
+              {t.interfaceSizeHelp}
+            </p>
+          </div>
+          <ToggleGroup
+            aria-labelledby="size-label"
+            variant="outline"
+            size="sm"
+            value={[String(size)]}
+            onValueChange={(next) => {
+              const value = Number(next[0])
+              if (isInterfaceSize(value)) setSize(value)
+            }}
+          >
+            {INTERFACE_SIZES.map((value) => (
+              <ToggleGroupItem key={value} value={String(value)}>
+                {`${value}%`}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">

@@ -45,6 +45,7 @@ src/
 - Routing uses hash history so every route stays inside the one `index.html` Tauri serves. Give each route `staticData: { title }` for the shell header.
 - A Base UI `Button` given `render={<Link />}` becomes `<a role="button">`. For navigation, style the `Link` with `buttonVariants()` so it stays a link.
 - `package.json` holds the app version; `tauri.conf.json` reads it. Bump `src-tauri/Cargo.toml` with it (a test enforces the match) before handing out a build, so `dnf` upgrades and results can name the build.
+- Size everything in rem (Tailwind spacing and text do). The interface size setting scales the root font (`InterfaceSizeProvider`), so a px size would not follow it.
 - The window has no system decorations (`decorations: false`). The AppShell header is the title bar: `data-tauri-drag-region="deep"` drags from anywhere in it except buttons and links. Window operations go through `nativeService.window`, which is null in a plain browser.
 - `SidebarProvider` toggles the sidebar on Ctrl/Cmd+B at the window. Editor keymaps that bind Mod-b must stop propagation.
 - CodeMirror extensions stay inside `src/features/markdown/lib`. Theme the editor with CSS variables (`var(--foreground)`), never fixed colors, and keep Tab unbound so focus can leave the editor.
