@@ -12,6 +12,7 @@ import {
   DRAFT_DELAY_MS,
   MemoryFileService,
   MemorySessionStore,
+  TREE_LINES_STORAGE_KEY,
   WorkspaceProvider,
   WorkspaceView,
 } from "@/workspace"
@@ -627,5 +628,34 @@ describe("003.04: auto save", () => {
     await waitForAutoSave()
     expect(asked).toBe(0)
     expect(tab("Untitled, unsaved changes")).toBeInTheDocument()
+  })
+})
+
+describe("003.05: folder tree branch lines", () => {
+  async function openNotes() {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({
+      "/notes/a.md": "# A",
+      "/notes/sub/c.md": "# C",
+    })
+    files.nextFolder = "/notes"
+    renderWorkspace(files)
+    await user.click(await screen.findByRole("button", { name: "Open folder" }))
+    const panel = await screen.findByRole("complementary", {
+      name: "Folder notes",
+    })
+    // The tree is announced by name (ReUI's Tree used to drop the label).
+    return within(panel).findByRole("tree", { name: "Files in notes" })
+  }
+
+  it("shows branch lines by default", async () => {
+    localStorage.removeItem(TREE_LINES_STORAGE_KEY)
+    expect(await openNotes()).toHaveAttribute("data-lines", "true")
+  })
+
+  it("hides them when the setting is off", async () => {
+    localStorage.setItem(TREE_LINES_STORAGE_KEY, "false")
+    expect(await openNotes()).not.toHaveAttribute("data-lines")
+    localStorage.removeItem(TREE_LINES_STORAGE_KEY)
   })
 })

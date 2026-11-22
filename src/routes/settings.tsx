@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { EditorPreferencesForm } from "@/features/markdown"
 import { LOCALES, isLocalePreference, useLocale, useMessages } from "@/lib/i18n"
-import { useAutoSaveSetting } from "@/workspace"
+import { useAutoSaveSetting, useTreeLinesSetting } from "@/workspace"
 
 export const Route = createFileRoute("/settings")({
   staticData: {
@@ -116,6 +116,7 @@ function Settings() {
   const { motion, reducedMotion, setMotion } = useMotion()
   const { size, setSize } = useInterfaceSize()
   const [autoSave, setAutoSave] = useAutoSaveSetting()
+  const [treeLines, setTreeLines] = useTreeLinesSetting()
 
   return (
     <div className="flex max-w-2xl min-w-0 flex-col gap-6 p-6">
@@ -158,6 +159,25 @@ function Settings() {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <Label htmlFor="tree-lines" className="text-sm">
+              {t.treeLines}
+            </Label>
+            <p
+              id="tree-lines-description"
+              className="text-xs text-muted-foreground"
+            >
+              {t.treeLinesHelp}
+            </p>
+          </div>
+          <Switch
+            id="tree-lines"
+            aria-describedby="tree-lines-description"
+            checked={treeLines}
+            onCheckedChange={setTreeLines}
+          />
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">

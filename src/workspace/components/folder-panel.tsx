@@ -28,6 +28,7 @@ import { useDescribeError } from "@/services/native"
 
 import { workspaceMessages } from "../messages"
 import { basename } from "../paths"
+import { useTreeLinesSetting } from "../tree-lines-setting"
 import { useWorkspace, type FolderState } from "../workspace-provider"
 
 function PanelAction({
@@ -64,6 +65,7 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
   const workspace = useWorkspace()
   const t = useMessages(workspaceMessages)
   const describe = useDescribeError()
+  const [showLines] = useTreeLinesSetting()
   const name = basename(folder.path)
   const activePath =
     workspace.state.documents.find((d) => d.id === workspace.state.activeId)
@@ -142,6 +144,7 @@ export function FolderPanel({ folder }: { folder: FolderState }) {
           <div className="flex flex-col gap-2">
             <FileTree
               label={t.filesIn(name)}
+              showLines={showLines}
               rootId={folder.listing.root}
               rootName={name}
               entries={folder.listing.entries.map((e) => ({
