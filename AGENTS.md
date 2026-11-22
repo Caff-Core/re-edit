@@ -47,6 +47,7 @@ src/
 - `package.json` holds the app version; `tauri.conf.json` reads it. Bump `src-tauri/Cargo.toml` with it (a test enforces the match) before handing out a build, so `dnf` upgrades and results can name the build.
 - Size everything in rem (Tailwind spacing and text do). The interface size setting scales the root font (`InterfaceSizeProvider`), so a px size would not follow it.
 - ReUI's `Tree` spreads `getContainerProps()` (called without a label) over its props, so an `aria-label` passed to it is lost. `FileTree` hands it a proxied tree whose `getContainerProps` supplies the label; do the same for any other tree.
+- A setting with a few exclusive choices uses `ChoiceGroup` (`src/components/molecules/choice-group.tsx`): joined outline buttons with icons and `aria-pressed`, after ReUI c-button-group-3.
 - The window has no system decorations (`decorations: false`). The AppShell header is the title bar: `data-tauri-drag-region="deep"` drags from anywhere in it except buttons and links. Window operations go through `nativeService.window`, which is null in a plain browser.
 - `SidebarProvider` toggles the sidebar on Ctrl/Cmd+B at the window. Editor keymaps that bind Mod-b must stop propagation.
 - CodeMirror extensions stay inside `src/features/markdown/lib`. Theme the editor with CSS variables (`var(--foreground)`), never fixed colors, and keep Tab unbound so focus can leave the editor.
