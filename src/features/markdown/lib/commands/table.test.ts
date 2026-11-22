@@ -1,4 +1,8 @@
-import { EditorSelection, EditorState, type StateCommand } from "@codemirror/state"
+import {
+  EditorSelection,
+  EditorState,
+  type StateCommand,
+} from "@codemirror/state"
 import { describe, expect, it } from "vitest"
 
 import { announce } from "./announce"
@@ -13,10 +17,15 @@ import {
   tableAt,
 } from "./table"
 
-const TABLE = ["| Name | Value |", "| ---- | ----- |", "| one  | 1     |"].join("\n")
+const TABLE = ["| Name | Value |", "| ---- | ----- |", "| one  | 1     |"].join(
+  "\n"
+)
 
 function stateAt(doc: string, needle: string) {
-  return EditorState.create({ doc, selection: EditorSelection.cursor(doc.indexOf(needle)) })
+  return EditorState.create({
+    doc,
+    selection: EditorSelection.cursor(doc.indexOf(needle)),
+  })
 }
 
 function run(command: StateCommand, state: EditorState) {
@@ -26,7 +35,8 @@ function run(command: StateCommand, state: EditorState) {
     state,
     dispatch: (tr) => {
       next = tr.state
-      for (const effect of tr.effects) if (effect.is(announce)) messages.push(effect.value)
+      for (const effect of tr.effects)
+        if (effect.is(announce)) messages.push(effect.value)
     },
   })
   const head = next.selection.main.head
@@ -43,7 +53,11 @@ function run(command: StateCommand, state: EditorState) {
 describe("tableAt", () => {
   it("finds the table and cell under the cursor", () => {
     const context = tableAt(stateAt(`intro\n\n${TABLE}\n\nafter`, "1 "))
-    expect(context).toMatchObject({ firstLine: 3, lastLine: 5, cell: { row: 0, column: 1 } })
+    expect(context).toMatchObject({
+      firstLine: 3,
+      lastLine: 5,
+      cell: { row: 0, column: 1 },
+    })
   })
 
   it("returns null outside a table", () => {
@@ -55,7 +69,12 @@ describe("table commands", () => {
   it("adds a formatted row below and announces it", () => {
     const result = run(addTableRow, stateAt(TABLE, "one"))
     expect(result.doc).toBe(
-      ["| Name | Value |", "| ---- | ----- |", "| one  | 1     |", "|      |       |"].join("\n")
+      [
+        "| Name | Value |",
+        "| ---- | ----- |",
+        "| one  | 1     |",
+        "|      |       |",
+      ].join("\n")
     )
     expect(result.messages).toEqual(["Row added, row 2, column 1"])
     expect(result.lineText).toBe("|      |       |")
@@ -93,7 +112,9 @@ describe("table commands", () => {
 
   it("does nothing outside a table so default keys still work", () => {
     expect(run(addTableRow, stateAt("plain text", "text")).handled).toBe(false)
-    expect(run(nextTableCell, stateAt("plain text", "text")).handled).toBe(false)
+    expect(run(nextTableCell, stateAt("plain text", "text")).handled).toBe(
+      false
+    )
   })
 
   it("inserts a table between blank lines so GFM ends it, with the first header selected", () => {

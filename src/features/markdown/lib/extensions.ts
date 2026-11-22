@@ -13,7 +13,6 @@ import {
   EditorView,
   drawSelection,
   keymap,
-  lineNumbers,
   type ViewUpdate,
 } from "@codemirror/view"
 
@@ -22,11 +21,11 @@ import { tableAt } from "./commands/table"
 import { markdownBlocks } from "./blocks"
 import { editorKeymap } from "./keymap"
 import { languageExtensions, type EditorMessages } from "./editor-messages"
+import type { EditorPreferences } from "@/lib/codemirror/preferences"
 import {
-  EDITOR_FONT_FAMILIES,
-  EDITOR_FONT_SIZES,
-  type EditorPreferences,
-} from "./preferences"
+  preferenceExtensions,
+  reconfigurePreferences,
+} from "@/lib/codemirror/setup"
 import { editorHighlighting, editorTheme } from "./theme"
 
 export interface EditorStatus {
@@ -46,11 +45,6 @@ export interface MarkdownExtensionOptions {
   onAnnounce?: (message: string) => void
 }
 
-const wrapping = new Compartment()
-const gutter = new Compartment()
-const spelling = new Compartment()
-const fontSize = new Compartment()
-const fontFamily = new Compartment()
 const language = new Compartment()
 const accessibleName = new Compartment()
 
@@ -74,41 +68,6 @@ export function reconfigureLanguage(
   })
 }
 
-function preferenceExtensions(preferences: EditorPreferences) {
-  return {
-    wrapping: preferences.lineWrapping ? EditorView.lineWrapping : [],
-    gutter: preferences.lineNumbers ? lineNumbers() : [],
-    spelling: EditorView.contentAttributes.of({
-      spellcheck: preferences.spellCheck ? "true" : "false",
-    }),
-    fontSize: EditorView.theme({
-      "&": { fontSize: EDITOR_FONT_SIZES[preferences.fontSize] },
-    }),
-    fontFamily: EditorView.theme({
-      ".cm-scroller": {
-        fontFamily: EDITOR_FONT_FAMILIES[preferences.fontFamily],
-      },
-    }),
-  }
-}
-
-/** Applies changed preferences to a running editor without losing state. */
-export function reconfigurePreferences(
-  view: EditorView,
-  preferences: EditorPreferences
-) {
-  const next = preferenceExtensions(preferences)
-  view.dispatch({
-    effects: [
-      wrapping.reconfigure(next.wrapping),
-      gutter.reconfigure(next.gutter),
-      spelling.reconfigure(next.spelling),
-      fontSize.reconfigure(next.fontSize),
-      fontFamily.reconfigure(next.fontFamily),
-    ],
-  })
-}
-
 /**
  * Base extensions for the Markdown editor. Tab is left unbound so keyboard
  * users can move focus out of the editor (WCAG 2.1.2, no keyboard trap).
@@ -116,7 +75,6 @@ export function reconfigurePreferences(
 export function markdownExtensions(
   options: MarkdownExtensionOptions
 ): Extension[] {
-  const prefs = preferenceExtensions(options.preferences)
   return [
     history(),
     drawSelection(),
@@ -129,11 +87,7 @@ export function markdownExtensions(
     editorHighlighting,
     editorKeymap(),
     keymap.of([...historyKeymap, ...defaultKeymap]),
-    wrapping.of(prefs.wrapping),
-    gutter.of(prefs.gutter),
-    spelling.of(prefs.spelling),
-    fontSize.of(prefs.fontSize),
-    fontFamily.of(prefs.fontFamily),
+    ...preferenceExtensions(options.preferences),
     accessibleName.of(labelAttribute(options.label)),
     EditorView.contentAttributes.of({ "aria-multiline": "true" }),
     EditorView.updateListener.of((update: ViewUpdate) => {
@@ -157,3 +111,6 @@ export function markdownExtensions(
     }),
   ]
 }
+
+// Re-exported so the Markdown editor keeps one import for its setup.
+export { reconfigurePreferences }

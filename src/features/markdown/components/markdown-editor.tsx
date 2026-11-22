@@ -18,7 +18,10 @@ import {
   reconfigurePreferences,
   type EditorStatus,
 } from "../lib/extensions"
-import { getEditorPreferences, useEditorPreferences } from "../lib/preferences"
+import {
+  getEditorPreferences,
+  useEditorPreferences,
+} from "@/lib/codemirror/preferences"
 import "../lib/render/markdown.css"
 
 export interface MarkdownEditorHandle {

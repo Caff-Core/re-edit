@@ -13,9 +13,9 @@ Edit `.txt` files with the same editing comfort as Markdown, and save them back 
 
 ## Verification status
 
-Planned. Nothing recorded yet.
+Automated checks ran on 2026-11-22 (Vitest, and a headless Chromium run of the browser build); the packaged walkthrough (008.04) has not run yet.
 
-| Acceptance | Result |
-|---|---|
-| AC-020 | Planned |
-| AC-021 | Planned |
+| Acceptance | Automated | Packaged Fedora 44 |
+|---|---|---|
+| AC-020 | Pass: find and replace with Ctrl+F, Undo from the File menu, counts that update after typing and are a Tab stop after the editor (`text-editor.test.tsx`); counts for accented, emoji, and Chinese text (`lib/counts.test.ts`) | Not run yet (Orca reading the counts) |
+| AC-021 | Pass: UTF-8 with a byte order mark and CRLF saved byte for byte after an edit; mixed line endings explained; Windows-1252 refused with no tab (`text-editor.test.tsx`); codec round trips for every supported encoding (`src/lib/text-codec.test.ts`) | Not run yet |

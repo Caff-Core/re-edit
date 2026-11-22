@@ -1,5 +1,6 @@
 import { markdownDocumentType } from "@/features/markdown"
 import { pdfDocumentType } from "@/features/pdf"
+import { plainTextDocumentType } from "@/features/plain-text"
 import { nativeService, type FileService } from "@/services/native"
 
 import samplePdfUrl from "./samples/form-sample.pdf?url"
@@ -12,6 +13,7 @@ import {
 /** Document types the app can open. Add a feature's type here to register it. */
 export const documentRegistry = createDocumentRegistry([
   markdownDocumentType,
+  plainTextDocumentType,
   pdfDocumentType,
 ])
 
@@ -25,6 +27,8 @@ function browserSampleFiles(): FileService {
       "# Welcome\n\nThis sample folder exists only in the browser build.\n",
     "/samples/notes/ideas.md":
       "# Ideas\n\n- Try the split view\n- Insert a table with Ctrl+Alt+T\n",
+    "/samples/notes/plain.txt":
+      "Plain text keeps its line endings.\r\nGrüße, 你好, café.\r\n",
     "/samples/notes/todo.md":
       "# To do\n\n- [ ] Open a real folder in the desktop app\n",
   })
