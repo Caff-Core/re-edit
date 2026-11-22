@@ -1,4 +1,5 @@
 export { FILE_SHORTCUTS, WorkspaceView } from "./components/workspace-view"
+export { AUTO_SAVE_DELAY_MS, useAutoSaveSetting } from "./auto-save-setting"
 export { MemoryFileService } from "./memory-files"
 export { basename } from "./paths"
 export { createDocumentRegistry, type DocumentRegistry } from "./registry"

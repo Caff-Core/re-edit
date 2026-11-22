@@ -22,7 +22,11 @@ import type { AppSidebarItem } from "@/components/organisms/app-sidebar"
 import { AppShell } from "@/components/templates/app-shell"
 import { LocaleProvider, useLocale, useMessages } from "@/lib/i18n"
 import { nativeService } from "@/services/native"
-import { WorkspaceProvider, WorkspaceView } from "@/workspace"
+import {
+  useAutoSaveSetting,
+  WorkspaceProvider,
+  WorkspaceView,
+} from "@/workspace"
 
 const APP_NAME = "re-edit"
 
@@ -41,6 +45,7 @@ function RootLayout() {
 function RootContent() {
   const t = useMessages(appMessages)
   const { locale } = useLocale()
+  const [autoSave] = useAutoSaveSetting()
   const brand = {
     name: APP_NAME,
     description: t.brandDescription,
@@ -75,6 +80,7 @@ function RootContent() {
       registry={documentRegistry}
       files={fileService}
       session={sessionStore}
+      autoSave={autoSave}
     >
       <AppShell
         brand={brand}

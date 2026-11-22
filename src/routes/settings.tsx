@@ -22,10 +22,13 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { EditorPreferencesForm } from "@/features/markdown"
 import { LOCALES, isLocalePreference, useLocale, useMessages } from "@/lib/i18n"
+import { useAutoSaveSetting } from "@/workspace"
 
 export const Route = createFileRoute("/settings")({
   staticData: {
@@ -112,6 +115,7 @@ function Settings() {
   const { preference, setPreference } = useLocale()
   const { motion, reducedMotion, setMotion } = useMotion()
   const { size, setSize } = useInterfaceSize()
+  const [autoSave, setAutoSave] = useAutoSaveSetting()
 
   return (
     <div className="flex max-w-2xl min-w-0 flex-col gap-6 p-6">
@@ -218,6 +222,34 @@ function Settings() {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
+      </section>
+      <Separator />
+      <section aria-labelledby="files-heading" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 id="files-heading" className="text-sm font-medium">
+            {t.files}
+          </h2>
+          <p className="text-sm text-muted-foreground">{t.filesHelp}</p>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <Label htmlFor="auto-save" className="text-sm">
+              {t.autoSave}
+            </Label>
+            <p
+              id="auto-save-description"
+              className="text-xs text-muted-foreground"
+            >
+              {t.autoSaveHelp}
+            </p>
+          </div>
+          <Switch
+            id="auto-save"
+            aria-describedby="auto-save-description"
+            checked={autoSave}
+            onCheckedChange={setAutoSave}
+          />
+        </div>
       </section>
       <Separator />
       <section aria-labelledby="editor-heading" className="flex flex-col gap-3">

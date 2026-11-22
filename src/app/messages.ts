@@ -38,6 +38,11 @@ export const appMessages = defineMessages({
     language: "Language",
     languageHelp: "System follows your desktop language.",
     languageSystem: "System",
+    files: "Files",
+    filesHelp: "How documents are written to disk.",
+    autoSave: "Auto save",
+    autoSaveHelp:
+      "Saves documents that have a file one second after you stop typing. New documents stay as recoverable drafts until you save them once.",
     editor: "Editor",
     editorHelp: "Changes apply to open documents right away.",
   },
@@ -75,6 +80,11 @@ export const appMessages = defineMessages({
     language: "语言",
     languageHelp: "“跟随系统”使用桌面的语言。",
     languageSystem: "跟随系统",
+    files: "文件",
+    filesHelp: "文档写入磁盘的方式。",
+    autoSave: "自动保存",
+    autoSaveHelp:
+      "停止输入一秒后保存已有文件的文档。新文档在首次保存前作为可恢复的草稿保留。",
     editor: "编辑器",
     editorHelp: "更改会立即应用到已打开的文档。",
   },
