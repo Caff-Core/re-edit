@@ -24,6 +24,9 @@ export const appMessages = defineMessages({
     themeDark: "Default Dark",
     themeSolarizedLight: "Solarized Light",
     themeSolarizedDark: "Solarized Dark",
+    interfaceSize: "Interface size",
+    interfaceSizeHelp:
+      "Scales text and controls. Ctrl+= and Ctrl+- change it, Ctrl+0 resets.",
     motion: "Motion",
     motionHelp: "Sets how much the interface animates.",
     motionNone: "None",
@@ -59,6 +62,9 @@ export const appMessages = defineMessages({
     themeDark: "默认深色",
     themeSolarizedLight: "Solarized 浅色",
     themeSolarizedDark: "Solarized 深色",
+    interfaceSize: "界面大小",
+    interfaceSizeHelp:
+      "缩放文字和控件。Ctrl+= 和 Ctrl+- 调整，Ctrl+0 恢复默认。",
     motion: "动效",
     motionHelp: "设置界面动画的程度。",
     motionNone: "无",

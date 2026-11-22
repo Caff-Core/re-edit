@@ -9,6 +9,7 @@ import { FilePenLineIcon, PenLineIcon, SettingsIcon } from "lucide-react"
 
 import { AppStatus } from "@/app/app-status"
 import { appMessages } from "@/app/messages"
+import { InterfaceSizeProvider } from "@/app/providers/interface-size-provider"
 import { MotionProvider } from "@/app/providers/motion-provider"
 import { AppWindowControls } from "@/app/app-window-controls"
 import {
@@ -29,7 +30,9 @@ function RootLayout() {
   return (
     <LocaleProvider>
       <MotionProvider>
-        <RootContent />
+        <InterfaceSizeProvider>
+          <RootContent />
+        </InterfaceSizeProvider>
       </MotionProvider>
     </LocaleProvider>
   )
