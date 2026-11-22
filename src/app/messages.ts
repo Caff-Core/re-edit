@@ -27,6 +27,8 @@ export const appMessages = defineMessages({
     interfaceSize: "Interface size",
     interfaceSizeHelp:
       "Scales text and controls. Ctrl+= and Ctrl+- change it, Ctrl+0 resets.",
+    treeLines: "Folder tree lines",
+    treeLinesHelp: "Shows a guide line for each level in the folder panel.",
     motion: "Motion",
     motionHelp: "Sets how much the interface animates.",
     motionNone: "None",
@@ -70,6 +72,8 @@ export const appMessages = defineMessages({
     interfaceSize: "界面大小",
     interfaceSizeHelp:
       "缩放文字和控件。Ctrl+= 和 Ctrl+- 调整，Ctrl+0 恢复默认。",
+    treeLines: "文件夹树连接线",
+    treeLinesHelp: "在文件夹面板中为每一层级显示引导线。",
     motion: "动效",
     motionHelp: "设置界面动画的程度。",
     motionNone: "无",

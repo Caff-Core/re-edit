@@ -21,6 +21,8 @@ export interface FileTreeProps {
   activeId: string | null
   onOpenFile: (id: string) => void
   label: string
+  /** Draws a guide line for each nesting level. */
+  showLines?: boolean
 }
 
 interface Node {
@@ -43,6 +45,7 @@ export function FileTree({
   activeId,
   onOpenFile,
   label,
+  showLines = false,
 }: FileTreeProps) {
   const nodes = useMemo(() => {
     const map = new Map<string, Node>([
@@ -76,8 +79,33 @@ export function FileTree({
     tree.rebuildTree()
   }, [tree, nodes])
 
+  // ReUI's Tree calls getContainerProps() without a label and spreads it
+  // over our props, which would leave the tree with an empty accessible
+  // name. Hand it a view of the tree that supplies the label.
+  const labelledTree = useMemo(
+    () =>
+      new Proxy(tree, {
+        get: (target, key, receiver) =>
+          key === "getContainerProps"
+            ? () => target.getContainerProps(label)
+            : Reflect.get(target, key, receiver),
+      }),
+    [tree, label]
+  )
+
   return (
-    <Tree indent={INDENT} tree={tree} aria-label={label}>
+    <Tree
+      indent={INDENT}
+      tree={labelledTree}
+      data-lines={showLines || undefined}
+      // ReUI's indent-lines pattern (c-tree-2): one border-colored line per
+      // indent step, drawn behind the items, so it follows the theme.
+      className={
+        showLines
+          ? "relative before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)-1px),var(--border)_calc(var(--tree-indent)))]"
+          : undefined
+      }
+    >
       {tree.getItems().map((item) => {
         const data = item.getItemData()
         const active = item.getId() === activeId

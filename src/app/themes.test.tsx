@@ -253,3 +253,26 @@ describe("AC-008: motion presets", () => {
     expect(screen.queryByText(/Your system asks for reduced motion/)).toBeNull()
   })
 })
+
+describe("003.05: folder tree lines setting", () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it("toggles from Settings and keeps the choice", async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderSettings()
+    const toggle = await screen.findByRole("switch", {
+      name: "Folder tree lines",
+    })
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    expect(toggle).not.toBeChecked()
+    expect(localStorage.getItem("folderTreeLines")).toBe("false")
+    unmount()
+    renderSettings()
+    expect(
+      await screen.findByRole("switch", { name: "Folder tree lines" })
+    ).not.toBeChecked()
+  })
+})
