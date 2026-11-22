@@ -8,6 +8,7 @@ export interface WorkspaceState {
 export type WorkspaceAction =
   | { type: "open"; document: OpenDocument }
   | { type: "close"; id: string }
+  | { type: "closeMany"; ids: string[] }
   | { type: "activate"; id: string }
   | { type: "dirty"; id: string; dirty: boolean }
   | { type: "rename"; id: string; path: string; title: string }
@@ -28,16 +29,10 @@ export function workspaceReducer(
         documents: [...state.documents, action.document],
         activeId: action.document.id,
       }
-    case "close": {
-      const index = state.documents.findIndex((d) => d.id === action.id)
-      if (index === -1) return state
-      const documents = state.documents.filter((d) => d.id !== action.id)
-      const activeId =
-        state.activeId === action.id
-          ? ((documents[index] ?? documents[index - 1] ?? null)?.id ?? null)
-          : state.activeId
-      return { documents, activeId }
-    }
+    case "close":
+      return closeDocuments(state, [action.id])
+    case "closeMany":
+      return closeDocuments(state, action.ids)
     case "activate":
       return state.documents.some((d) => d.id === action.id)
         ? { ...state, activeId: action.id }
@@ -69,6 +64,28 @@ export function workspaceReducer(
       }
     }
   }
+}
+
+/**
+ * Removes the given documents. When the active one goes, the nearest
+ * remaining tab takes over: the next one to its right, else the one to
+ * its left, the same rule for one tab or many.
+ */
+function closeDocuments(state: WorkspaceState, ids: string[]): WorkspaceState {
+  const closing = new Set(ids)
+  const documents = state.documents.filter((d) => !closing.has(d.id))
+  if (documents.length === state.documents.length) return state
+  if (state.activeId === null || !closing.has(state.activeId)) {
+    return { documents, activeId: state.activeId }
+  }
+  const index = state.documents.findIndex((d) => d.id === state.activeId)
+  const after = state.documents
+    .slice(index + 1)
+    .find((d) => !closing.has(d.id))
+  const before = state.documents
+    .slice(0, index)
+    .findLast((d) => !closing.has(d.id))
+  return { documents, activeId: (after ?? before)?.id ?? null }
 }
 
 /** "Untitled", then "Untitled 2", "Untitled 3", ... among open titles. */

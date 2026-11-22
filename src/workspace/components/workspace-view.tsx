@@ -102,17 +102,20 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
   const describe = useDescribeError()
   const { documents, activeId } = workspace.state
   const types = workspace.registry.list()
-  const [closing, setClosing] = useState<string | null>(null)
-  const closingDocument = documents.find((d) => d.id === closing)
+  /** Tabs waiting on the discard prompt, in tab order. */
+  const [closing, setClosing] = useState<string[] | null>(null)
+  const unsavedClosing = documents.filter(
+    (d) => d.dirty && closing?.includes(d.id)
+  )
   const active = documents.find((d) => d.id === activeId)
   const canExport =
     active !== undefined &&
     workspace.registry.get(active.typeId)?.exporter !== undefined
 
-  const requestClose = (id: string) => {
-    const document = documents.find((d) => d.id === id)
-    if (document?.dirty) setClosing(id)
-    else workspace.close(id)
+  /** Closes the tabs, asking once first when any of them is unsaved. */
+  const requestClose = (ids: string[]) => {
+    if (documents.some((d) => d.dirty && ids.includes(d.id))) setClosing(ids)
+    else workspace.closeMany(ids)
   }
 
   const { save, saveAs, newDocument, openFileDialog, openFolderDialog } =
@@ -407,7 +410,8 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                 title,
                 dirty,
               }))}
-              onClose={requestClose}
+              onClose={(id) => requestClose([id])}
+              onCloseMany={requestClose}
               actions={
                 <>
                   {fileMenu}
@@ -521,7 +525,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
       </div>
 
       <AlertDialog
-        open={closingDocument !== undefined}
+        open={unsavedClosing.length > 0}
         onOpenChange={(open) => {
           if (!open) setClosing(null)
         }}
@@ -529,10 +533,14 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t.discardTitle(closingDocument?.title ?? "")}
+              {unsavedClosing.length > 1
+                ? t.discardManyTitle(unsavedClosing.length)
+                : t.discardTitle(unsavedClosing[0]?.title ?? "")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t.discardDescription}
+              {unsavedClosing.length > 1
+                ? t.discardManyDescription
+                : t.discardDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -540,7 +548,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (closing) workspace.close(closing)
+                if (closing) workspace.closeMany(closing)
                 setClosing(null)
               }}
             >

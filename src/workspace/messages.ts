@@ -40,6 +40,10 @@ export const workspaceMessages = defineMessages({
     discardTitle: (title: string) => `Discard changes to ${title}?`,
     discardDescription:
       "Closing this document loses the changes made since it was last saved.",
+    discardManyTitle: (count: number) =>
+      `Discard changes to ${count} documents?`,
+    discardManyDescription:
+      "Closing these documents loses the changes made since they were last saved.",
     keepEditing: "Keep editing",
     discardAndClose: "Discard and close",
     unsupported: (name: string) => `${name} is not a supported document type.`,
@@ -101,6 +105,8 @@ export const workspaceMessages = defineMessages({
     openDisk: "打开磁盘版本",
     discardTitle: (title: string) => `放弃对 ${title} 的修改？`,
     discardDescription: "关闭此文档将丢失自上次保存以来的修改。",
+    discardManyTitle: (count: number) => `放弃对 ${count} 个文档的修改？`,
+    discardManyDescription: "关闭这些文档将丢失自上次保存以来的修改。",
     keepEditing: "继续编辑",
     discardAndClose: "放弃并关闭",
     unsupported: (name: string) => `${name} 不是支持的文档类型。`,

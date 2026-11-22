@@ -51,6 +51,42 @@ describe("workspace state", () => {
     expect(state.activeId).toBe("b")
   })
 
+  it("closes several tabs at once and keeps an untouched active tab", () => {
+    const state = workspaceReducer(open("a", "b", "c", "d"), {
+      type: "closeMany",
+      ids: ["a", "b"],
+    })
+    expect(state.documents.map((d) => d.id)).toEqual(["c", "d"])
+    expect(state.activeId).toBe("d")
+  })
+
+  it("moves the active tab to the nearest survivor, right first", () => {
+    const base = workspaceReducer(open("a", "b", "c", "d"), {
+      type: "activate",
+      id: "b",
+    })
+    // Close to the left of c, with b active: c takes over.
+    expect(
+      workspaceReducer(base, { type: "closeMany", ids: ["a", "b"] }).activeId
+    ).toBe("c")
+    // Close to the right of a, with b active: a takes over.
+    expect(
+      workspaceReducer(base, { type: "closeMany", ids: ["b", "c", "d"] })
+        .activeId
+    ).toBe("a")
+    // Close all.
+    expect(
+      workspaceReducer(base, { type: "closeMany", ids: ["a", "b", "c", "d"] })
+    ).toEqual({ documents: [], activeId: null })
+  })
+
+  it("returns the same state when nothing matches", () => {
+    const state = open("a")
+    expect(workspaceReducer(state, { type: "closeMany", ids: ["x"] })).toBe(
+      state
+    )
+  })
+
   it("tracks dirty flags and ignores no-op updates", () => {
     const opened = open("a")
     const dirty = workspaceReducer(opened, {
