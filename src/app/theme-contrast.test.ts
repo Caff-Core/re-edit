@@ -153,6 +153,7 @@ describe("AC-009: theme contrast", () => {
         ".theme-gruvbox-dark",
         ".theme-catppuccin-latte",
         ".theme-catppuccin-mocha",
+        ".theme-neon",
       ])
     )
   })

@@ -54,6 +54,7 @@ const THEME_LABELS: Record<Theme, keyof AppMessages> = {
   "gruvbox-dark": "themeGruvboxDark",
   "catppuccin-latte": "themeCatppuccinLatte",
   "catppuccin-mocha": "themeCatppuccinMocha",
+  neon: "themeNeon",
 }
 
 const MOTION_LABELS = {
