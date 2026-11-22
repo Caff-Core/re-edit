@@ -5,7 +5,8 @@ import {
   redoDepth,
   undoDepth,
 } from "@codemirror/commands"
-import { markdown } from "@codemirror/lang-markdown"
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
+import { languages } from "@codemirror/language-data"
 import { search } from "@codemirror/search"
 import { Compartment, type Extension } from "@codemirror/state"
 import {
@@ -18,9 +19,14 @@ import {
 
 import { announce } from "./commands/announce"
 import { tableAt } from "./commands/table"
+import { markdownBlocks } from "./blocks"
 import { editorKeymap } from "./keymap"
 import { languageExtensions, type EditorMessages } from "./editor-messages"
-import { EDITOR_FONT_SIZES, type EditorPreferences } from "./preferences"
+import {
+  EDITOR_FONT_FAMILIES,
+  EDITOR_FONT_SIZES,
+  type EditorPreferences,
+} from "./preferences"
 import { editorHighlighting, editorTheme } from "./theme"
 
 export interface EditorStatus {
@@ -44,6 +50,7 @@ const wrapping = new Compartment()
 const gutter = new Compartment()
 const spelling = new Compartment()
 const fontSize = new Compartment()
+const fontFamily = new Compartment()
 const language = new Compartment()
 const accessibleName = new Compartment()
 
@@ -77,6 +84,11 @@ function preferenceExtensions(preferences: EditorPreferences) {
     fontSize: EditorView.theme({
       "&": { fontSize: EDITOR_FONT_SIZES[preferences.fontSize] },
     }),
+    fontFamily: EditorView.theme({
+      ".cm-scroller": {
+        fontFamily: EDITOR_FONT_FAMILIES[preferences.fontFamily],
+      },
+    }),
   }
 }
 
@@ -92,6 +104,7 @@ export function reconfigurePreferences(
       gutter.reconfigure(next.gutter),
       spelling.reconfigure(next.spelling),
       fontSize.reconfigure(next.fontSize),
+      fontFamily.reconfigure(next.fontFamily),
     ],
   })
 }
@@ -107,7 +120,9 @@ export function markdownExtensions(
   return [
     history(),
     drawSelection(),
-    markdown(),
+    // GFM on top of CommonMark; fenced code loads its language on first use.
+    markdown({ base: markdownLanguage, codeLanguages: languages }),
+    markdownBlocks,
     search({ top: true }),
     language.of(languageExtensions(options.messages)),
     editorTheme,
@@ -118,6 +133,7 @@ export function markdownExtensions(
     gutter.of(prefs.gutter),
     spelling.of(prefs.spelling),
     fontSize.of(prefs.fontSize),
+    fontFamily.of(prefs.fontFamily),
     accessibleName.of(labelAttribute(options.label)),
     EditorView.contentAttributes.of({ "aria-multiline": "true" }),
     EditorView.updateListener.of((update: ViewUpdate) => {

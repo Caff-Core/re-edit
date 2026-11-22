@@ -51,6 +51,9 @@ export const markdownMessages = defineMessages({
     fontSmall: "Small",
     fontMedium: "Medium",
     fontLarge: "Large",
+    editorFont: "Font",
+    fontMono: "Monospace",
+    fontSans: "Sans",
   },
   "zh-CN": {
     loadingPreview: "正在加载预览",
@@ -101,6 +104,9 @@ export const markdownMessages = defineMessages({
     fontSmall: "小",
     fontMedium: "中",
     fontLarge: "大",
+    editorFont: "字体",
+    fontMono: "等宽",
+    fontSans: "无衬线",
   },
 })
 
