@@ -10,3 +10,4 @@
 - [x] 004.06 Add Dracula, Nord, Gruvbox Light, Gruvbox Dark, Catppuccin Latte, and Catppuccin Mocha. Check: each previews, commits, survives a restart, and passes the contrast test. Added on request.
 - [x] 004.09 Add a Neon theme (magenta, cyan, green, and yellow on a near-black blue base). Check: it previews, commits, survives a restart, and passes the contrast test. Added on request.
 - [x] 004.07 Show the motion, language, and font size choices as button groups with icons (ReUI c-button-group-3) through the `ChoiceGroup` molecule. Added on request.
+- [x] 004.08 Show each settings section as a ReUI Frame: a header with title and description over a panel of rows. Check: each section reads as one framed group in every theme, the page does not scroll sideways at 390px, and each section keeps its heading and region name. Added on request.

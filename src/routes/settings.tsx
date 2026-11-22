@@ -9,6 +9,7 @@ import {
   MonitorIcon,
   WavesIcon,
 } from "lucide-react"
+import type { ReactNode } from "react"
 
 import { LANGUAGE_NAMES, appMessages } from "@/app/messages"
 import {
@@ -19,6 +20,13 @@ import {
 import { MOTION_PRESETS, useMotion } from "@/app/providers/motion-provider"
 import { useTheme } from "@/app/providers/theme-provider"
 import { THEMES, isTheme, type Theme } from "@/app/themes"
+import {
+  Frame,
+  FrameDescription,
+  FrameHeader,
+  FramePanel,
+  FrameTitle,
+} from "@/components/reui/frame"
 import { ChoiceGroup } from "@/components/molecules/choice-group"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,7 +37,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { EditorPreferencesForm } from "@/features/markdown"
 import { LOCALES, useLocale, useMessages } from "@/lib/i18n"
@@ -134,6 +141,33 @@ function ThemeMenu() {
   )
 }
 
+/** One settings group: a Frame with a titled header over a panel of rows. */
+function SettingsSection({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <section aria-labelledby={id}>
+      <Frame spacing="default">
+        <FrameHeader>
+          <FrameTitle>
+            <h2 id={id}>{title}</h2>
+          </FrameTitle>
+          <FrameDescription>{description}</FrameDescription>
+        </FrameHeader>
+        <FramePanel className="flex flex-col gap-4">{children}</FramePanel>
+      </Frame>
+    </section>
+  )
+}
+
 function Settings() {
   const t = useMessages(appMessages)
   const { preference, setPreference } = useLocale()
@@ -143,17 +177,12 @@ function Settings() {
   const [treeLines, setTreeLines] = useTreeLinesSetting()
 
   return (
-    <div className="flex max-w-2xl min-w-0 flex-col gap-6 p-6">
-      <section
-        aria-labelledby="appearance-heading"
-        className="flex flex-col gap-4"
+    <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-6 p-6">
+      <SettingsSection
+        id="appearance-heading"
+        title={t.appearance}
+        description={t.appearanceHelp}
       >
-        <div className="flex flex-col gap-1">
-          <h2 id="appearance-heading" className="text-sm font-medium">
-            {t.appearance}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t.appearanceHelp}</p>
-        </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-sm font-medium">{t.theme}</span>
           <ThemeMenu />
@@ -224,18 +253,12 @@ function Settings() {
             </p>
           ) : null}
         </div>
-      </section>
-      <Separator />
-      <section
-        aria-labelledby="language-heading"
-        className="flex flex-col gap-3"
+      </SettingsSection>
+      <SettingsSection
+        id="language-heading"
+        title={t.language}
+        description={t.languageHelp}
       >
-        <div className="flex flex-col gap-1">
-          <h2 id="language-heading" className="text-sm font-medium">
-            {t.language}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t.languageHelp}</p>
-        </div>
         <ChoiceGroup
           label={t.language}
           value={preference}
@@ -250,15 +273,12 @@ function Settings() {
             })),
           ]}
         />
-      </section>
-      <Separator />
-      <section aria-labelledby="files-heading" className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 id="files-heading" className="text-sm font-medium">
-            {t.files}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t.filesHelp}</p>
-        </div>
+      </SettingsSection>
+      <SettingsSection
+        id="files-heading"
+        title={t.files}
+        description={t.filesHelp}
+      >
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <Label htmlFor="auto-save" className="text-sm">
@@ -278,17 +298,14 @@ function Settings() {
             onCheckedChange={setAutoSave}
           />
         </div>
-      </section>
-      <Separator />
-      <section aria-labelledby="editor-heading" className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 id="editor-heading" className="text-sm font-medium">
-            {t.editor}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t.editorHelp}</p>
-        </div>
+      </SettingsSection>
+      <SettingsSection
+        id="editor-heading"
+        title={t.editor}
+        description={t.editorHelp}
+      >
         <EditorPreferencesForm />
-      </section>
+      </SettingsSection>
     </div>
   )
 }
