@@ -19,6 +19,7 @@ import {
   type EditorStatus,
 } from "../lib/extensions"
 import { getEditorPreferences, useEditorPreferences } from "../lib/preferences"
+import "../lib/render/markdown.css"
 
 export interface MarkdownEditorHandle {
   undo(): void
@@ -140,5 +141,12 @@ export function MarkdownEditor({
     }
   }, [])
 
-  return <div ref={hostRef} className="flex min-h-0 min-w-0 flex-1 flex-col" />
+  // markdown-body scopes the per-theme code colors (markdown.css) to the
+  // editor; CodeMirror sets its own font, size, and color over the rest.
+  return (
+    <div
+      ref={hostRef}
+      className="markdown-body flex min-h-0 min-w-0 flex-1 flex-col"
+    />
+  )
 }

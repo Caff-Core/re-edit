@@ -1,6 +1,12 @@
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { AArrowDownIcon, AArrowUpIcon, TypeIcon } from "lucide-react"
+import {
+  AArrowDownIcon,
+  AArrowUpIcon,
+  BaselineIcon,
+  CodeXmlIcon,
+  TypeIcon,
+} from "lucide-react"
 
 import { ChoiceGroup } from "@/components/molecules/choice-group"
 import { useMessages } from "@/lib/i18n"
@@ -8,6 +14,7 @@ import { useMessages } from "@/lib/i18n"
 import {
   setEditorPreferences,
   useEditorPreferences,
+  type EditorFontFamily,
   type EditorFontSize,
   type EditorPreferences,
 } from "../lib/preferences"
@@ -34,6 +41,15 @@ const FONT_SIZES = [
   { value: "large", label: "fontLarge", icon: AArrowUpIcon },
 ] as const satisfies readonly {
   value: EditorFontSize
+  label: Key
+  icon: unknown
+}[]
+
+const FONT_FAMILIES = [
+  { value: "mono", label: "fontMono", icon: CodeXmlIcon },
+  { value: "sans", label: "fontSans", icon: BaselineIcon },
+] as const satisfies readonly {
+  value: EditorFontFamily
   label: Key
   icon: unknown
 }[]
@@ -70,6 +86,21 @@ export function EditorPreferencesForm() {
           />
         </div>
       ))}
+      <div className="flex items-center justify-between gap-4">
+        <span id="editor-font-family" className="text-sm font-medium">
+          {t.editorFont}
+        </span>
+        <ChoiceGroup
+          labelledBy="editor-font-family"
+          value={preferences.fontFamily}
+          onChange={(fontFamily) => set({ fontFamily })}
+          options={FONT_FAMILIES.map((family) => ({
+            value: family.value,
+            label: t[family.label],
+            icon: family.icon,
+          }))}
+        />
+      </div>
       <div className="flex items-center justify-between gap-4">
         <span id="editor-font-size" className="text-sm font-medium">
           {t.fontSize}
