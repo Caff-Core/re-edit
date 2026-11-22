@@ -8,6 +8,10 @@ The editor reuses the shared CodeMirror pieces (history, search, wrapping, theme
 
 The test fixture type in `src/test/fixtures/document-types` stays, as the proof that registering a type needs no Markdown edits.
 
+## Scaffold status
+
+After 008.01 to 008.03 (2026-11-22): `src/lib/codemirror` holds the editor preferences, panel phrases, chrome theme, and preference compartments, and Markdown uses them from there. `src/features/plain-text` registers `.txt` with a CodeMirror editor, a status line (words, characters, encoding, line ending), and a notice for mixed line endings. The browser build's sample folder includes a `.txt` file with Windows line endings.
+
 ## Verification
 
 Planned checks: codec round trips for UTF-8, UTF-8 with a byte order mark, and UTF-16 with Windows and Unix line endings; refusal of an unsupported encoding; count accuracy (including non-ASCII words); keyboard find and replace. The packaged Fedora 44 check reopens a saved file and compares bytes.
