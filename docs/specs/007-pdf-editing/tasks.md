@@ -2,7 +2,7 @@
 
 ## Remaining work
 
-- [ ] 007.01 Run the round-trip spike for both engines on the AC-019 script and the encrypted, scanned, and annotated fixtures; record the result and choose the engine. (REQ-019, AC-019)
+- [x] 007.01 Run the round-trip spike for both engines on the AC-019 script and the encrypted, scanned, and annotated fixtures; record the result and choose the engine. (REQ-019, AC-019)
 - [ ] 007.02 Add the PDF feature with the viewer: thumbnails, zoom, page navigation, and the unsupported-file error. (REQ-015, AC-015)
 - [ ] 007.03 Add page tools: reorder (drag and keyboard), rotate, and delete with stable page identity and the last-page guard. (REQ-018, AC-018)
 - [ ] 007.04 Add annotations: highlight, comment, and text box, with select, edit, move, and delete, including scanned pages. (REQ-016, AC-016)

@@ -33,7 +33,11 @@ Scripts, fixtures, and the render comparison are in [spike/](spike/); `spike/run
 
 Both need a content security policy change in `tauri.conf.json`: A a worker source for pdf.js, B `'wasm-unsafe-eval'` and a worker source.
 
-### Recommendation (pending the maintainer's choice)
+### Decision
+
+**PDFium through EmbedPDF**, chosen by the maintainer on 2026-11-22 after the spike below.
+
+### Recommendation given
 
 **B, PDFium through EmbedPDF.** One engine renders, reads text, edits, and saves, so what the editor shows is what it writes. It generates annotation and field appearances itself, and it moves and deletes pages natively. Those are exactly the two places where A failed silently on the first try and needed hand-written PDF structure to pass. A would leave that structure code in the app for every annotation kind, plus editing existing annotations, plus any later incremental save. PDFium covers all three. The cost is about 3 MB more, loaded only when the first PDF opens, and a lower-level API. The app would use the `@embedpdf/engines` worker engine for most operations and the raw module for rotation and page moves.
 
