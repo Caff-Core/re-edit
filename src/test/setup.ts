@@ -32,6 +32,10 @@ if (!Range.prototype.getBoundingClientRect)
 if (!Range.prototype.getClientRects) Range.prototype.getClientRects = emptyRects
 if (!document.elementFromPoint) document.elementFromPoint = () => null
 
+// jsdom has no canvas. Report no 2D context instead of logging "not implemented".
+HTMLCanvasElement.prototype.getContext = (() =>
+  null) as unknown as HTMLCanvasElement["getContext"]
+
 // jsdom has no scrollIntoView.
 if (!Element.prototype.scrollIntoView)
   Element.prototype.scrollIntoView = () => {}
