@@ -4,8 +4,15 @@ export interface SessionDocument {
   typeId: string
   title: string
   path: string | null
-  /** Unsaved content, or null when the document matched its file. */
+  /** Unsaved work from the editor's `draft()`, or null when the document matched its file. */
   draft: string | null
+  /**
+   * Modification time of the disk version the draft was made against. When
+   * the file differs after a restart, the draft comes back as a conflict.
+   */
+  baseModifiedMs: number | null
+  /** The document still saves to a new copy first (see `OpenDocument.copyPending`). */
+  copyPending: boolean
 }
 
 export interface Session {
@@ -53,15 +60,30 @@ export function parseSession(raw: string | null): Session | null {
     return null
   }
   if (!isRecord(value) || !Array.isArray(value.documents)) return null
-  const documents = value.documents.filter(
-    (d): d is SessionDocument =>
-      isRecord(d) &&
-      typeof d.id === "string" &&
-      typeof d.typeId === "string" &&
-      typeof d.title === "string" &&
-      (d.path === null || typeof d.path === "string") &&
-      (d.draft === null || typeof d.draft === "string")
-  )
+  const documents = value.documents
+    .filter(
+      (
+        d
+      ): d is Omit<SessionDocument, "baseModifiedMs" | "copyPending"> &
+        Record<string, unknown> =>
+        isRecord(d) &&
+        typeof d.id === "string" &&
+        typeof d.typeId === "string" &&
+        typeof d.title === "string" &&
+        (d.path === null || typeof d.path === "string") &&
+        (d.draft === null || typeof d.draft === "string")
+    )
+    // Sessions from before 006 lack the last two fields.
+    .map((d): SessionDocument => ({
+      id: d.id,
+      typeId: d.typeId,
+      title: d.title,
+      path: d.path,
+      draft: d.draft,
+      baseModifiedMs:
+        typeof d.baseModifiedMs === "number" ? d.baseModifiedMs : null,
+      copyPending: d.copyPending === true,
+    }))
   return {
     documents,
     activeId: typeof value.activeId === "string" ? value.activeId : null,

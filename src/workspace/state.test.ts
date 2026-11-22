@@ -13,10 +13,12 @@ const doc = (id: string, title = id): OpenDocument => ({
   typeId: "markdown",
   title,
   path: null,
-  initialContent: "",
-  savedContent: "",
+  initial: "",
+  saved: "",
   dirty: false,
   modifiedMs: null,
+  copyPending: false,
+  restoredDraft: null,
 })
 
 function open(...ids: string[]): WorkspaceState {
@@ -100,14 +102,22 @@ describe("workspace state", () => {
     ).toBe(dirty)
   })
 
-  it("renames a document after Save As", () => {
-    const state = workspaceReducer(open("a"), {
+  it("renames a document after Save As and ends a pending copy", () => {
+    const pending = workspaceReducer(initialWorkspaceState, {
+      type: "open",
+      document: { ...doc("a"), path: "/n/a.pdf", copyPending: true },
+    })
+    const state = workspaceReducer(pending, {
       type: "rename",
       id: "a",
-      path: "/n/a.md",
-      title: "a.md",
+      path: "/n/a (edited).pdf",
+      title: "a (edited).pdf",
     })
-    expect(state.documents[0]).toMatchObject({ path: "/n/a.md", title: "a.md" })
+    expect(state.documents[0]).toMatchObject({
+      path: "/n/a (edited).pdf",
+      title: "a (edited).pdf",
+      copyPending: false,
+    })
   })
 
   it("numbers repeated titles", () => {

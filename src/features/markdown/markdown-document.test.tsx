@@ -6,10 +6,16 @@ import { describe, expect, it, vi } from "vitest"
 
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { LocaleProvider, useLocale } from "@/lib/i18n"
+import { textDocuments } from "@/lib/text-document"
 import type { DocumentEditorHandle } from "@/workspace"
 import { markdownFixture } from "@/test/fixtures"
 
 import { MarkdownDocument } from "./components/markdown-document"
+
+const textDocument = (text: string) => ({
+  ...textDocuments.createEmpty(),
+  text,
+})
 
 vi.mock("mermaid", () => ({
   default: {
@@ -44,8 +50,8 @@ function renderDocument(initialContent = "", resolveAsset = fakeResolve) {
         ref={handle}
         documentId="doc-1"
         title="Untitled"
-        initialContent={initialContent}
-        savedContent={initialContent}
+        initial={textDocument(initialContent)}
+        saved={textDocument(initialContent)}
         onDirtyChange={onDirtyChange}
         onEdit={() => {}}
         path="/docs/a.md"
@@ -138,16 +144,102 @@ describe("workspace editor contract", () => {
     expect(onDirtyChange).toHaveBeenCalledTimes(2)
   })
 
-  it("serializes the buffer and stays dirty for edits made after the saved snapshot", () => {
+  it("serializes the buffer and stays dirty for edits made after the saved snapshot", async () => {
     const { view, onDirtyChange, handle } = renderDocument("")
     type(view, "first")
-    const snapshot = handle.current!.serialize()
-    expect(snapshot).toBe("first")
+    const snapshot = await handle.current!.serialize()
+    expect(new TextDecoder().decode(snapshot.bytes)).toBe("first")
     type(view, " second")
-    act(() => handle.current!.markSaved(snapshot))
+    act(() => handle.current!.markSaved(snapshot.token))
     expect(onDirtyChange).toHaveBeenLastCalledWith(true)
-    act(() => handle.current!.markSaved(handle.current!.serialize()))
+    const latest = await handle.current!.serialize()
+    act(() => handle.current!.markSaved(latest.token))
     expect(onDirtyChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it("writes back the file's byte order mark and Windows line endings", async () => {
+    const onDirtyChange = vi.fn()
+    const handle = createRef<DocumentEditorHandle>()
+    const file = Uint8Array.from([
+      0xef,
+      0xbb,
+      0xbf,
+      ...new TextEncoder().encode("# Título\r\n\r\nUno\r\n"),
+    ])
+    const loaded = textDocuments.load(file)
+    render(
+      <TooltipProvider>
+        <MarkdownDocument
+          ref={handle}
+          documentId="doc-1"
+          title="Untitled"
+          initial={loaded}
+          saved={loaded}
+          onDirtyChange={onDirtyChange}
+          onEdit={() => {}}
+          path="/docs/a.md"
+          resolveAsset={fakeResolve}
+        />
+      </TooltipProvider>
+    )
+    const unchanged = await handle.current!.serialize()
+    expect([...unchanged.bytes]).toEqual([...file])
+    const view = EditorView.findFromDOM(
+      screen.getByRole("textbox", { name: "Untitled, Markdown source" })
+    )!
+    type(view, "Dos\n")
+    const edited = await handle.current!.serialize()
+    expect(new TextDecoder().decode(edited.bytes.subarray(3))).toBe(
+      "# Título\r\n\r\nUno\r\nDos\r\n"
+    )
+    expect([...edited.bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+  })
+
+  it("routes Undo, Redo, and Find through its handle and reports them", async () => {
+    const onCommandsChange = vi.fn()
+    const handle = createRef<DocumentEditorHandle>()
+    render(
+      <TooltipProvider>
+        <MarkdownDocument
+          ref={handle}
+          documentId="doc-1"
+          title="Untitled"
+          initial={textDocument("")}
+          saved={textDocument("")}
+          onDirtyChange={() => {}}
+          onEdit={() => {}}
+          onCommandsChange={onCommandsChange}
+          path={null}
+          resolveAsset={fakeResolve}
+        />
+      </TooltipProvider>
+    )
+    const view = EditorView.findFromDOM(
+      screen.getByRole("textbox", { name: "Untitled, Markdown source" })
+    )!
+    expect(onCommandsChange).toHaveBeenLastCalledWith({
+      undo: false,
+      redo: false,
+      find: true,
+    })
+    type(view, "abc")
+    await waitFor(() =>
+      expect(onCommandsChange).toHaveBeenLastCalledWith({
+        undo: true,
+        redo: false,
+        find: true,
+      })
+    )
+    act(() => {
+      expect(handle.current!.run("undo")).toBe(true)
+    })
+    expect(view.state.doc.toString()).toBe("")
+    act(() => {
+      expect(handle.current!.run("redo")).toBe(true)
+    })
+    expect(view.state.doc.toString()).toBe("abc")
+    expect(handle.current!.run("format")).toBe(false)
+    expect(handle.current!.draft()).toBe("abc")
   })
 })
 
@@ -155,8 +247,8 @@ describe("view re-creation", () => {
   it("keeps focus in the editor when the view is replaced", () => {
     const props = {
       documentId: "doc-1",
-      initialContent: "x",
-      savedContent: "x",
+      initial: textDocument("x"),
+      saved: textDocument("x"),
       onDirtyChange: () => {},
       onEdit: () => {},
       path: null,
@@ -421,8 +513,8 @@ describe("AC-009: editor language", () => {
           <MarkdownDocument
             documentId="doc-1"
             title="Untitled"
-            initialContent=""
-            savedContent=""
+            initial={textDocument("")}
+            saved={textDocument("")}
             onDirtyChange={() => {}}
             onEdit={() => {}}
             path={null}

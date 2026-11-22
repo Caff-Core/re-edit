@@ -18,7 +18,7 @@ export type {
   FolderListing,
   ImageData,
   NativeService,
-  TextFile,
+  DocumentFile,
 } from "./types"
 
 export const nativeService: NativeService = isTauri()

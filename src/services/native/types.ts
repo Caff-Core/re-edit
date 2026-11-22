@@ -8,8 +8,9 @@ export interface AppInfo {
   platform: string
 }
 
-export interface TextFile {
-  content: string
+/** A whole file as read from disk, with the version it was read at. */
+export interface DocumentFile {
+  bytes: Uint8Array
   modifiedMs: number
 }
 
@@ -90,15 +91,19 @@ export interface FileService {
    * succeeds.
    */
   exportPdf(path: string, html: string): Promise<number>
-  readTextFile(path: string): Promise<TextFile>
+  /**
+   * Reads a whole file. Fails with "tooLarge" above `maxBytes` (default
+   * 20 MB; the host caps it at 200 MB).
+   */
+  readFile(path: string, maxBytes?: number): Promise<DocumentFile>
   /**
    * Writes atomically and returns the new modification time. With
    * `expectedModifiedMs`, fails with a "conflict" FileError when the file on
    * disk is not that version.
    */
-  writeTextFile(
+  writeFile(
     path: string,
-    content: string,
+    bytes: Uint8Array,
     expectedModifiedMs?: number | null
   ): Promise<number>
   statFile(path: string): Promise<FileStat>

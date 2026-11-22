@@ -8,7 +8,9 @@ const type = (id: string, extensions: string[]): DocumentType => ({
   label: { en: id, "zh-CN": id },
   defaultTitle: { en: id, "zh-CN": id },
   extensions,
+  load: () => "",
   createEmpty: () => "",
+  fromDraft: (draft) => draft,
   Editor: () => null,
 })
 

@@ -1,4 +1,8 @@
-import { invoke } from "@tauri-apps/api/core"
+import {
+  invoke,
+  type InvokeArgs,
+  type InvokeOptions,
+} from "@tauri-apps/api/core"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 
@@ -11,18 +15,19 @@ import {
   type FolderListing,
   type ImageData,
   type NativeService,
-  type TextFile,
+  type DocumentFile,
 } from "./types"
 
 /** Rust FileError arrives as { kind, message }; surface it as an Error. */
 async function call<T>(
   command: string,
-  args?: Record<string, unknown>
+  args?: InvokeArgs,
+  options?: InvokeOptions
 ): Promise<T> {
   try {
-    return await (args === undefined
-      ? invoke<T>(command)
-      : invoke<T>(command, args))
+    if (args === undefined) return await invoke<T>(command)
+    if (options === undefined) return await invoke<T>(command, args)
+    return await invoke<T>(command, args, options)
   } catch (error) {
     if (error && typeof error === "object" && "message" in error) {
       const { kind, message } = error as { kind?: unknown; message: unknown }
@@ -34,6 +39,12 @@ async function call<T>(
     }
     throw new Error(String(error), { cause: error })
   }
+}
+
+/** `read_file` sends the modification time (8 bytes, little endian), then the file. */
+export function unframe(buffer: ArrayBuffer): DocumentFile {
+  const modifiedMs = Number(new DataView(buffer).getBigUint64(0, true))
+  return { modifiedMs, bytes: new Uint8Array(buffer, 8) }
 }
 
 /** Turns an async subscription into a synchronous stop function. */
@@ -70,9 +81,18 @@ export const tauriNativeService: NativeService = {
   pickExportPath: (suggestedName, format) =>
     call<string | null>("pick_export_path", { suggestedName, format }),
   exportPdf: (path, html) => call<number>("export_pdf", { path, html }),
-  readTextFile: (path) => call<TextFile>("read_text_file", { path }),
-  writeTextFile: (path, content, expectedModifiedMs = null) =>
-    call<number>("write_text_file", { path, content, expectedModifiedMs }),
+  readFile: async (path, maxBytes) =>
+    unframe(await call<ArrayBuffer>("read_file", { path, maxBytes })),
+  // Raw body: the bytes never pass through JSON.
+  writeFile: (path, bytes, expectedModifiedMs = null) =>
+    call<number>("write_file", bytes, {
+      headers: {
+        "x-path": encodeURIComponent(path),
+        ...(expectedModifiedMs === null
+          ? {}
+          : { "x-expected-modified-ms": String(expectedModifiedMs) }),
+      },
+    }),
   statFile: (path) => call<FileStat>("stat_file", { path }),
   watchPaths: (paths) => call<void>("watch_paths", { paths }),
   onFileChanged: (listener) =>

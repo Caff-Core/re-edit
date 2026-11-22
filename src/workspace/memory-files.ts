@@ -4,8 +4,8 @@ import {
   type FileStat,
   type FolderEntry,
   type FolderListing,
+  type DocumentFile,
   type ImageData,
-  type TextFile,
 } from "@/services/native"
 
 function parentOf(path: string) {
@@ -26,12 +26,48 @@ function nameOf(path: string) {
   return path.slice(path.lastIndexOf("/") + 1)
 }
 
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+/** A text view over stored bytes (UTF-8), for tests and the sample folder. */
+class TextView {
+  private readonly bytes: Map<string, Uint8Array>
+  constructor(bytes: Map<string, Uint8Array>) {
+    this.bytes = bytes
+  }
+  get size() {
+    return this.bytes.size
+  }
+  get(path: string) {
+    const data = this.bytes.get(path)
+    return data === undefined ? undefined : decoder.decode(data)
+  }
+  set(path: string, content: string) {
+    this.bytes.set(path, encoder.encode(content))
+    return this
+  }
+  has(path: string) {
+    return this.bytes.has(path)
+  }
+  delete(path: string) {
+    return this.bytes.delete(path)
+  }
+  keys() {
+    return this.bytes.keys()
+  }
+}
+
 /**
  * In-memory file system with scripted dialog answers. Used by tests and by the
  * browser build, which has no access to the disk.
  */
 export class MemoryFileService implements FileService {
-  readonly files = new Map<string, string>()
+  /** File contents as stored, byte for byte. */
+  readonly bytes = new Map<string, Uint8Array>()
+  /** The same files read and written as UTF-8 text. */
+  readonly files = new TextView(this.bytes)
+  /** Every read, with the size limit the document type asked for. */
+  readonly reads: { path: string; maxBytes: number | undefined }[] = []
   /** Answers for the next dialogs; undefined or null means "cancelled". */
   nextOpenFile: string | null = null
   nextFolder: string | null = null
@@ -45,9 +81,12 @@ export class MemoryFileService implements FileService {
   private readonly listeners = new Set<(path: string) => void>()
   private clock = 1
 
-  constructor(files: Record<string, string> = {}) {
+  constructor(files: Record<string, string | Uint8Array> = {}) {
     for (const [path, content] of Object.entries(files))
-      this.files.set(path, content)
+      this.bytes.set(
+        path,
+        typeof content === "string" ? encoder.encode(content) : content
+      )
   }
 
   async pickOpenFile() {
@@ -86,14 +125,17 @@ export class MemoryFileService implements FileService {
       : this.nextSavePath
   }
 
-  async readTextFile(path: string): Promise<TextFile> {
-    const content = this.files.get(path)
-    if (content === undefined) throw new Error(`${path} does not exist`)
-    return { content, modifiedMs: this.modified.get(path) ?? 1 }
+  async readFile(path: string, maxBytes?: number): Promise<DocumentFile> {
+    this.reads.push({ path, maxBytes })
+    const bytes = this.bytes.get(path)
+    if (bytes === undefined) throw new Error(`${path} does not exist`)
+    if (bytes.length > (maxBytes ?? 20 * 1024 * 1024))
+      throw new FileError("tooLarge", `${path} is too large`)
+    return { bytes: bytes.slice(), modifiedMs: this.modified.get(path) ?? 1 }
   }
 
   async statFile(path: string): Promise<FileStat> {
-    return this.files.has(path)
+    return this.bytes.has(path)
       ? { exists: true, modifiedMs: this.modified.get(path) ?? 1 }
       : { exists: false, modifiedMs: 0 }
   }
@@ -111,21 +153,24 @@ export class MemoryFileService implements FileService {
   }
 
   /** Another program writes the file (or deletes it with null). */
-  externalWrite(path: string, content: string | null) {
+  externalWrite(path: string, content: string | Uint8Array | null) {
     if (content === null) {
-      this.files.delete(path)
+      this.bytes.delete(path)
       this.modified.delete(path)
     } else {
-      this.files.set(path, content)
+      this.bytes.set(
+        path,
+        typeof content === "string" ? encoder.encode(content) : content
+      )
       this.modified.set(path, ++this.clock)
     }
     if (this.watched.has(path))
       this.listeners.forEach((listener) => listener(path))
   }
 
-  async writeTextFile(
+  async writeFile(
     path: string,
-    content: string,
+    content: Uint8Array,
     expectedModifiedMs: number | null = null
   ) {
     if (this.failWrites > 0) {
@@ -134,7 +179,7 @@ export class MemoryFileService implements FileService {
     }
     if (
       expectedModifiedMs !== null &&
-      (!this.files.has(path) ||
+      (!this.bytes.has(path) ||
         (this.modified.get(path) ?? 1) !== expectedModifiedMs)
     ) {
       throw new FileError(
@@ -142,7 +187,7 @@ export class MemoryFileService implements FileService {
         `${path} changed on disk since it was opened`
       )
     }
-    this.files.set(path, content)
+    this.bytes.set(path, content.slice())
     const modified = ++this.clock
     this.modified.set(path, modified)
     // Like inotify, the app's own writes are reported too.

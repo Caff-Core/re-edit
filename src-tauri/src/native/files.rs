@@ -12,11 +12,14 @@ use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
+use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_dialog::DialogExt;
 
-/// Largest text file the editor opens.
+/// Largest file a document type opens unless it asks for more.
 pub const MAX_FILE_BYTES: u64 = 20 * 1024 * 1024;
+/// Hard ceiling for any document, whatever its type asks for (PDF).
+pub const MAX_DOCUMENT_BYTES: u64 = 200 * 1024 * 1024;
 /// Folder walk limits, so a huge folder cannot stall the app.
 pub const MAX_DEPTH: usize = 8;
 pub const MAX_ENTRIES: usize = 5000;
@@ -130,13 +133,6 @@ fn canonicalize_lenient(path: &Path) -> Result<PathBuf, FileError> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextFile {
-    pub content: String,
-    pub modified_ms: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct FolderEntry {
     pub path: String,
     pub name: String,
@@ -161,25 +157,50 @@ fn modified_ms(path: &Path) -> u64 {
         .unwrap_or(0)
 }
 
-pub fn read_text(path: &Path) -> Result<TextFile, FileError> {
+/// Reads a whole file, refusing one larger than `limit` bytes. Returns the
+/// bytes and the modification time of the version read.
+pub fn read_bytes(path: &Path, limit: u64) -> Result<(Vec<u8>, u64), FileError> {
     let metadata = fs::metadata(path).map_err(|e| FileError::io(path, e))?;
-    if metadata.len() > MAX_FILE_BYTES {
+    if metadata.len() > limit {
         return Err(FileError::TooLarge(format!(
             "{} is larger than {} MB",
             path.display(),
-            MAX_FILE_BYTES / 1024 / 1024
+            limit / 1024 / 1024
         )));
     }
     let mut bytes = Vec::new();
     open_no_follow(path, false)?
         .read_to_end(&mut bytes)
         .map_err(|e| FileError::io(path, e))?;
-    let content = String::from_utf8(bytes)
-        .map_err(|_| FileError::NotText(format!("{} is not UTF-8 text", path.display())))?;
-    Ok(TextFile {
-        content,
-        modified_ms: modified_ms(path),
-    })
+    Ok((bytes, modified_ms(path)))
+}
+
+/// Response body of [`read_file`]: the modification time as 8 little-endian
+/// bytes, then the file. One read gives both, so they always match.
+pub fn framed(bytes: Vec<u8>, modified_ms: u64) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len() + 8);
+    out.extend_from_slice(&modified_ms.to_le_bytes());
+    out.extend(bytes);
+    out
+}
+
+/// Decodes a percent-encoded header value (`encodeURIComponent`).
+pub fn percent_decode(value: &str) -> Result<String, FileError> {
+    let bad = || FileError::Io(format!("malformed path header: {value}"));
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = value.get(i + 1..i + 3).ok_or_else(bad)?;
+            out.push(u8::from_str_radix(hex, 16).map_err(|_| bad())?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).map_err(|_| bad())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -204,22 +225,14 @@ pub fn stat(path: &Path) -> FileStat {
 
 static TEMP_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// Writes `content` atomically: a temporary file in the same folder is
-/// written, flushed to disk, given the target's permissions, and renamed over
-/// the target. A failure at any step leaves the target as it was.
+/// Writes `content` (text or binary, such as a PDF) atomically: a temporary
+/// file in the same folder is written, flushed to disk, given the target's
+/// permissions, and renamed over the target. A failure at any step leaves the
+/// target as it was.
 ///
 /// With `expected_modified_ms`, the write is refused with
 /// [`FileError::Conflict`] when the file on disk is not the version the editor
 /// last read or wrote.
-pub fn write_text(
-    path: &Path,
-    content: &str,
-    expected_modified_ms: Option<u64>,
-) -> Result<u64, FileError> {
-    write_bytes(path, content.as_bytes(), expected_modified_ms)
-}
-
-/// [`write_text`] for any bytes, such as a rendered PDF.
 pub fn write_bytes(
     path: &Path,
     content: &[u8],
@@ -432,26 +445,42 @@ pub async fn pick_save_path<R: Runtime>(
     Ok(Some(scope.allow(&path)?.to_string_lossy().into_owned()))
 }
 
+/// Reads a document as raw bytes (see [`framed`]). `max_bytes` lets a type
+/// such as PDF raise the limit, up to [`MAX_DOCUMENT_BYTES`].
 #[tauri::command]
-pub async fn read_text_file(
+pub async fn read_file(
     scope: State<'_, FileScope>,
     path: String,
-) -> Result<TextFile, FileError> {
-    read_text(&scope.check(Path::new(&path))?)
+    max_bytes: Option<u64>,
+) -> Result<Response, FileError> {
+    let limit = max_bytes.unwrap_or(MAX_FILE_BYTES).min(MAX_DOCUMENT_BYTES);
+    let (bytes, modified_ms) = read_bytes(&scope.check(Path::new(&path))?, limit)?;
+    Ok(Response::new(framed(bytes, modified_ms)))
 }
 
+/// Writes a document atomically from a raw byte body. The path comes in the
+/// `x-path` header (percent-encoded) and the optional version check in
+/// `x-expected-modified-ms`, so the bytes never pass through JSON.
 #[tauri::command]
-pub async fn write_text_file(
+pub async fn write_file(
     scope: State<'_, FileScope>,
-    path: String,
-    content: String,
-    expected_modified_ms: Option<u64>,
+    request: Request<'_>,
 ) -> Result<u64, FileError> {
-    write_text(
-        &scope.check(Path::new(&path))?,
-        &content,
-        expected_modified_ms,
-    )
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err(FileError::Io("write_file expects raw bytes".into()));
+    };
+    let header = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned)
+    };
+    let path = percent_decode(
+        &header("x-path").ok_or_else(|| FileError::Io("write_file needs a path".into()))?,
+    )?;
+    let expected = header("x-expected-modified-ms").and_then(|v| v.parse().ok());
+    write_bytes(&scope.check(Path::new(&path))?, bytes, expected)
 }
 
 #[tauri::command]
@@ -471,6 +500,48 @@ pub async fn list_folder(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_bytes_within_the_limit_only() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("doc.pdf");
+        let bytes: Vec<u8> = (0..=255u8).cycle().take(4096).collect();
+        fs::write(&path, &bytes).unwrap();
+        let (read, modified) = read_bytes(&path, 4096).unwrap();
+        assert_eq!(read, bytes);
+        assert_eq!(modified, modified_ms(&path));
+        assert!(matches!(
+            read_bytes(&path, 4095),
+            Err(FileError::TooLarge(_))
+        ));
+    }
+
+    #[test]
+    fn frames_the_modification_time_before_the_bytes() {
+        let out = framed(vec![0xff, 0xfe, 0x00], 1_700_000_000_123);
+        assert_eq!(&out[..8], &1_700_000_000_123u64.to_le_bytes());
+        assert_eq!(&out[8..], &[0xff, 0xfe, 0x00]);
+    }
+
+    #[test]
+    fn writes_binary_bytes_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.txt");
+        let bytes = [0xef, 0xbb, 0xbf, b'h', b'i', b'\r', b'\n', 0x00, 0xff];
+        let modified = write_bytes(&path, &bytes, None).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(modified, modified_ms(&path));
+    }
+
+    #[test]
+    fn decodes_percent_encoded_paths() {
+        assert_eq!(
+            percent_decode("%2Fhome%2Fme%2Fnotes%20%E4%B8%AD.md").unwrap(),
+            "/home/me/notes 中.md"
+        );
+        assert!(percent_decode("%zz").is_err());
+        assert!(percent_decode("%e4").is_err());
+    }
 
     fn tree() -> tempfile::TempDir {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -541,7 +612,7 @@ mod tests {
         ));
         // Even with the check bypassed, the write refuses to follow the link.
         assert!(matches!(
-            write_text(&dir.path().join("dangling.md"), "x", None),
+            write_bytes(&dir.path().join("dangling.md"), b"x", None),
             Err(FileError::OutsideScope(_))
         ));
         assert!(!outside.exists());
@@ -553,7 +624,7 @@ mod tests {
         std::os::unix::fs::symlink(dir.path().join("readme.md"), dir.path().join("alias.md"))
             .unwrap();
         assert!(matches!(
-            read_text(&dir.path().join("alias.md")),
+            read_bytes(&dir.path().join("alias.md"), MAX_FILE_BYTES),
             Err(FileError::OutsideScope(_))
         ));
     }
@@ -588,7 +659,7 @@ mod tests {
         let dir = tree();
         let path = dir.path().join("readme.md");
         fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
-        let modified = write_text(&path, "new", None).unwrap();
+        let modified = write_bytes(&path, b"new", None).unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap(), "new");
         assert_eq!(
             fs::metadata(&path).unwrap().permissions().mode() & 0o777,
@@ -610,14 +681,14 @@ mod tests {
         let path = dir.path().join("private.md");
         fs::write(&path, "secret").unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
-        write_text(&path, "still secret", None).unwrap();
+        write_bytes(&path, b"still secret", None).unwrap();
         assert_eq!(
             fs::metadata(&path).unwrap().permissions().mode() & 0o777,
             0o600
         );
         // A new file follows the umask like any other created file.
         let fresh = dir.path().join("fresh.md");
-        write_text(&fresh, "new", None).unwrap();
+        write_bytes(&fresh, b"new", None).unwrap();
         let mode = fs::metadata(&fresh).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode & 0o600, 0o600);
         assert_eq!(mode & 0o111, 0);
@@ -632,14 +703,14 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(20));
         fs::write(&path, "theirs").unwrap();
         assert!(matches!(
-            write_text(&path, "mine", Some(known)),
+            write_bytes(&path, b"mine", Some(known)),
             Err(FileError::Conflict(_))
         ));
         assert_eq!(fs::read_to_string(&path).unwrap(), "theirs");
         let current = stat(&path).modified_ms;
-        assert!(write_text(&path, "mine", Some(current)).is_ok());
+        assert!(write_bytes(&path, b"mine", Some(current)).is_ok());
         assert!(matches!(
-            write_text(&dir.path().join("gone.md"), "x", Some(1)),
+            write_bytes(&dir.path().join("gone.md"), b"x", Some(1)),
             Err(FileError::Conflict(_))
         ));
     }
@@ -653,25 +724,28 @@ mod tests {
         let path = folder.join("doc.md");
         fs::write(&path, "original").unwrap();
         fs::set_permissions(&folder, fs::Permissions::from_mode(0o500)).unwrap();
-        let result = write_text(&path, "lost?", None);
+        let result = write_bytes(&path, b"lost?", None);
         fs::set_permissions(&folder, fs::Permissions::from_mode(0o700)).unwrap();
         assert!(matches!(result, Err(FileError::Io(_))));
         assert_eq!(fs::read_to_string(&path).unwrap(), "original");
     }
 
     #[test]
-    fn read_and_write_round_trip_and_reject_binary() {
+    fn read_and_write_round_trip_any_bytes() {
         let dir = tree();
         let path = dir.path().join("readme.md");
-        write_text(&path, "updated", None).unwrap();
-        assert_eq!(read_text(&path).unwrap().content, "updated");
+        write_bytes(&path, b"updated", None).unwrap();
+        assert_eq!(read_bytes(&path, MAX_FILE_BYTES).unwrap().0, b"updated");
+        // Decoding is the document type's job: the host keeps any bytes.
         fs::write(dir.path().join("bad.md"), [0xff, 0xfe, 0x00]).unwrap();
+        assert_eq!(
+            read_bytes(&dir.path().join("bad.md"), MAX_FILE_BYTES)
+                .unwrap()
+                .0,
+            [0xff, 0xfe, 0x00]
+        );
         assert!(matches!(
-            read_text(&dir.path().join("bad.md")),
-            Err(FileError::NotText(_))
-        ));
-        assert!(matches!(
-            read_text(&dir.path().join("missing.md")),
+            read_bytes(&dir.path().join("missing.md"), MAX_FILE_BYTES),
             Err(FileError::NotFound(_))
         ));
     }

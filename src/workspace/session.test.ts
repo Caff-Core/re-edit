@@ -33,6 +33,8 @@ describe("session parsing", () => {
           title: "a.md",
           path: "/a.md",
           draft: null,
+          baseModifiedMs: null,
+          copyPending: false,
         },
         {
           id: "doc-2",
@@ -40,6 +42,8 @@ describe("session parsing", () => {
           title: "Untitled",
           path: null,
           draft: "x",
+          baseModifiedMs: null,
+          copyPending: false,
         },
       ],
       activeId: "doc-2",
@@ -47,6 +51,28 @@ describe("session parsing", () => {
     })
     expect(parseSession("not json")).toBeNull()
     expect(parseSession(null)).toBeNull()
+  })
+
+  it("keeps the draft's base version and pending copy", () => {
+    const raw = JSON.stringify({
+      documents: [
+        {
+          id: "doc-1",
+          typeId: "pdf",
+          title: "a.pdf",
+          path: "/a.pdf",
+          draft: "[]",
+          baseModifiedMs: 42,
+          copyPending: true,
+        },
+      ],
+      activeId: null,
+      folder: null,
+    })
+    expect(parseSession(raw)?.documents[0]).toMatchObject({
+      baseModifiedMs: 42,
+      copyPending: true,
+    })
   })
 
   it("keeps recents unique, newest first, and bounded", () => {

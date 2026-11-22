@@ -14,13 +14,18 @@ export {
   type Session,
   type SessionStore,
 } from "./session"
+export { defineDocumentType } from "./types"
 export type {
+  DocumentCommand,
+  DocumentCommandState,
   DocumentEditorHandle,
   DocumentEditorProps,
   DocumentExportContext,
   DocumentExporter,
   DocumentType,
   OpenDocument,
+  SaveMode,
+  SerializedDocument,
 } from "./types"
 export {
   DRAFT_DELAY_MS,

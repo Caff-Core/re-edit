@@ -108,9 +108,22 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
     (d) => d.dirty && closing?.includes(d.id)
   )
   const active = documents.find((d) => d.id === activeId)
-  const canExport =
-    active !== undefined &&
-    workspace.registry.get(active.typeId)?.exporter !== undefined
+  const activeType = active && workspace.registry.get(active.typeId)
+  const canExport = activeType?.exporter !== undefined
+  /** "Save", or the type's own label such as "Save Edited Copy". */
+  const saveLabel = activeType?.saveLabel?.[locale] ?? t.save
+  const activeCommands = (active && workspace.commands[active.id]) ?? {}
+  const routed = (
+    [
+      ["undo", t.undo],
+      ["redo", t.redo],
+      ["find", t.find],
+      ["format", t.formatDocument],
+    ] as const
+  ).filter(([command]) => command in activeCommands)
+  /** The document whose conflict waits for the Reload confirmation. */
+  const [reloading, setReloading] = useState<string | null>(null)
+  const reloadingDocument = documents.find((d) => d.id === reloading)
 
   /** Closes the tabs, asking once first when any of them is unsaved. */
   const requestClose = (ids: string[]) => {
@@ -228,7 +241,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             disabled={!active}
             onClick={() => active && void workspace.save(active.id)}
           >
-            {t.save}
+            {saveLabel}
             <DropdownMenuShortcut>{FILE_SHORTCUTS.save}</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -239,6 +252,23 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             <DropdownMenuShortcut>{FILE_SHORTCUTS.saveAs}</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        {active && routed.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            {/* Only the commands the active document supports. */}
+            <DropdownMenuGroup>
+              {routed.map(([command, label]) => (
+                <DropdownMenuItem
+                  key={command}
+                  disabled={!activeCommands[command]}
+                  onClick={() => workspace.runCommand(active.id, command)}
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem
@@ -270,7 +300,7 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={t.save}
+            aria-label={saveLabel}
             aria-keyshortcuts="Control+S"
             disabled={!active}
             onClick={() => active && void workspace.save(active.id)}
@@ -279,7 +309,9 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
       >
         <SaveIcon aria-hidden="true" />
       </TooltipTrigger>
-      <TooltipContent>{t.saveWithShortcut(FILE_SHORTCUTS.save)}</TooltipContent>
+      <TooltipContent>
+        {t.saveWithShortcut(saveLabel, FILE_SHORTCUTS.save)}
+      </TooltipContent>
     </Tooltip>
   )
 
@@ -451,13 +483,13 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                   {conflict ? (
                     <Alert className="m-2 w-auto">
                       <AlertTitle>
-                        {conflict.diskContent === null
+                        {conflict.disk === null
                           ? t.deletedOnDisk(document.title)
                           : t.changedOnDisk(document.title)}
                       </AlertTitle>
                       <AlertDescription className="flex flex-col gap-2">
                         <span>
-                          {conflict.diskContent === null
+                          {conflict.disk === null
                             ? t.deletedHelp
                             : t.changedHelp}
                         </span>
@@ -465,36 +497,28 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => void workspace.keepMine(document.id)}
+                            onClick={() => void workspace.saveCopy(document.id)}
                           >
-                            {conflict.diskContent === null
-                              ? t.saveMine
-                              : t.keepMine}
+                            {t.saveCopy}
                           </Button>
-                          {conflict.diskContent === null ? null : (
-                            <>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  workspace.takeDiskVersion(document.id)
-                                }
-                              >
-                                {t.useDisk}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  workspace.openDiskCopy(document.id)
-                                }
-                              >
-                                {t.openDisk}
-                              </Button>
-                            </>
+                          {conflict.disk === null ? null : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setReloading(document.id)}
+                            >
+                              {t.reload}
+                            </Button>
                           )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => workspace.keepEditing(document.id)}
+                          >
+                            {t.keepEditing}
+                          </Button>
                         </span>
                       </AlertDescription>
                     </Alert>
@@ -503,8 +527,11 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
                     <Editor
                       documentId={document.id}
                       title={document.title}
-                      initialContent={document.initialContent}
-                      savedContent={document.savedContent}
+                      initial={document.initial}
+                      saved={document.saved}
+                      onCommandsChange={(commands) =>
+                        workspace.setCommands(document.id, commands)
+                      }
                       onDirtyChange={(dirty) =>
                         workspace.setDirty(document.id, dirty)
                       }
@@ -553,6 +580,36 @@ export function WorkspaceView({ hidden = false }: { hidden?: boolean }) {
               }}
             >
               {t.discardAndClose}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={reloadingDocument !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setReloading(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.reloadTitle(reloadingDocument?.title ?? "")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.reloadDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.keepEditing}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (reloading) workspace.reloadFromDisk(reloading)
+                setReloading(null)
+              }}
+            >
+              {t.reloadConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

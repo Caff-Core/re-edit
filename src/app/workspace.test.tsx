@@ -25,12 +25,13 @@ const registry = createDocumentRegistry([
 function renderWorkspace(
   files = new MemoryFileService(),
   session = new MemorySessionStore(),
-  autoSave = false
+  autoSave = false,
+  types = registry
 ) {
   const utils = render(
     <TooltipProvider>
       <WorkspaceProvider
-        registry={registry}
+        registry={types}
         files={files}
         session={session}
         autoSave={autoSave}
@@ -274,6 +275,8 @@ describe("AC-005: open a folder, edit two files, switch tabs, cancel a close, re
           title: "gone.md",
           path: "/gone.md",
           draft: null,
+          baseModifiedMs: null,
+          copyPending: false,
         },
         {
           id: "doc-8",
@@ -281,6 +284,8 @@ describe("AC-005: open a folder, edit two files, switch tabs, cancel a close, re
           title: "kept.md",
           path: "/kept.md",
           draft: null,
+          baseModifiedMs: null,
+          copyPending: false,
         },
       ],
       activeId: "doc-8",
@@ -343,9 +348,10 @@ describe("AC-006: changes on disk keep both versions; failed writes keep the buf
     return markdownView("a.md")
   }
 
-  it("turns a dirty tab into a conflict, opens the disk version beside it, and keeps mine", async () => {
+  it("AC-014: turns a dirty tab into a conflict and saves mine as a copy, keeping both versions", async () => {
     const user = userEvent.setup()
     const files = new MemoryFileService({ "/n/a.md": "# A" })
+    files.nextSavePath = "/n/a mine.md"
     const view = await openA(files)
     typeInto(view, " mine")
 
@@ -353,17 +359,29 @@ describe("AC-006: changes on disk keep both versions; failed writes keep the buf
     expect(await screen.findByText("a.md changed on disk")).toBeInTheDocument()
     expect(view.state.doc.toString()).toBe("# A mine")
 
-    await user.click(screen.getByRole("button", { name: "Open disk version" }))
-    const disk = await markdownView("a.md (on disk)")
-    expect(disk.state.doc.toString()).toBe("# A theirs")
-
-    await user.click(tab("a.md, unsaved changes"))
-    await user.click(screen.getByRole("button", { name: "Keep my version" }))
+    await user.click(screen.getByRole("button", { name: "Save a copy…" }))
     await waitFor(() =>
       expect(screen.queryByText("a.md changed on disk")).not.toBeInTheDocument()
     )
-    expect(files.files.get("/n/a.md")).toBe("# A mine")
-    expect(tab("a.md")).toBeInTheDocument()
+    expect(files.files.get("/n/a mine.md")).toBe("# A mine")
+    expect(files.files.get("/n/a.md")).toBe("# A theirs")
+    expect(tab("a mine.md")).toBeInTheDocument()
+  })
+
+  it("AC-014: Keep editing dismisses the conflict, and the next save asks again", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openA(files)
+    typeInto(view, " mine")
+    act(() => files.externalWrite("/n/a.md", "# A theirs"))
+    await user.click(
+      await screen.findByRole("button", { name: "Keep editing" })
+    )
+    expect(screen.queryByText("a.md changed on disk")).not.toBeInTheDocument()
+    typeInto(view, " more")
+    await user.keyboard("{Control>}s{/Control}")
+    expect(await screen.findByText("a.md changed on disk")).toBeInTheDocument()
+    expect(files.files.get("/n/a.md")).toBe("# A theirs")
   })
 
   it("reloads a clean tab that changed on disk and says so", async () => {
@@ -377,14 +395,24 @@ describe("AC-006: changes on disk keep both versions; failed writes keep the buf
     expect(tab("a.md")).toBeInTheDocument()
   })
 
-  it("loads the disk version as an undoable change", async () => {
+  it("AC-014: reloads the disk version after confirmation, as an undoable change", async () => {
     const user = userEvent.setup()
     const files = new MemoryFileService({ "/n/a.md": "# A" })
     const view = await openA(files)
     typeInto(view, " mine")
     act(() => files.externalWrite("/n/a.md", "# A theirs"))
+    await user.click(await screen.findByRole("button", { name: "Reload…" }))
+    const confirm = await screen.findByRole("alertdialog")
     await user.click(
-      await screen.findByRole("button", { name: "Use disk version" })
+      within(confirm).getByRole("button", { name: "Keep editing" })
+    )
+    expect(view.state.doc.toString()).toBe("# A mine")
+
+    await user.click(screen.getByRole("button", { name: "Reload…" }))
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Reload",
+      })
     )
     expect(view.state.doc.toString()).toBe("# A theirs")
     await waitFor(() => expect(tab("a.md")).toBeInTheDocument())
@@ -433,7 +461,11 @@ describe("AC-006: changes on disk keep both versions; failed writes keep the buf
     expect(
       await screen.findByText("a.md was deleted on disk")
     ).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Save my version" }))
+    expect(
+      screen.queryByRole("button", { name: "Reload…" })
+    ).not.toBeInTheDocument()
+    files.nextSavePath = "/n/a.md"
+    await user.click(screen.getByRole("button", { name: "Save a copy…" }))
     await waitFor(() => expect(files.files.get("/n/a.md")).toBe("# A kept"))
     expect(
       screen.queryByText("a.md was deleted on disk")
@@ -758,5 +790,204 @@ describe("tab close commands", () => {
       })
     )
     expect(await screen.findByText("No document open")).toBeInTheDocument()
+  })
+})
+
+describe("006: shared document workspace", () => {
+  const bom = [0xef, 0xbb, 0xbf]
+  const utf8 = (text: string) => [...new TextEncoder().encode(text)]
+
+  it("AC-012: saves a UTF-8 file with a byte order mark and Windows line endings byte for byte", async () => {
+    const user = userEvent.setup()
+    const original = Uint8Array.from([
+      ...bom,
+      ...utf8("# Título\r\n\r\nUno\r\n"),
+    ])
+    const files = new MemoryFileService({ "/n/a.md": original })
+    files.nextOpenFile = "/n/a.md"
+    renderWorkspace(files)
+    await user.click(await screen.findByRole("button", { name: "Open file" }))
+    const view = await markdownView("a.md")
+    expect(view.state.doc.toString()).toBe("# Título\n\nUno\n")
+
+    typeInto(view, "Dos\n")
+    await user.keyboard("{Control>}s{/Control}")
+    await waitFor(() => expect(tab("a.md")).toBeInTheDocument())
+    expect([...files.bytes.get("/n/a.md")!]).toEqual([
+      ...bom,
+      ...utf8("# Título\r\n\r\nUno\r\nDos\r\n"),
+    ])
+  })
+
+  it("AC-012: refuses a Windows-1252 file and opens no tab", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({
+      "/n/legacy.txt": Uint8Array.from([0x63, 0x61, 0x66, 0xe9]),
+    })
+    files.nextOpenFile = "/n/legacy.txt"
+    renderWorkspace(files)
+    await user.click(await screen.findByRole("button", { name: "Open file" }))
+    expect(
+      await screen.findByText(
+        /Could not open legacy\.txt: The file uses a text encoding the editor cannot keep intact/
+      )
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument()
+    expect([...files.bytes.get("/n/legacy.txt")!]).toEqual([
+      0x63, 0x61, 0x66, 0xe9,
+    ])
+  })
+
+  it("AC-013: two document types keep their own content, undo, and dirty state, and save only the active file", async () => {
+    const user = userEvent.setup()
+    const files = new MemoryFileService({ "/n/a.md": "# A", "/n/b.txt": "b" })
+    renderWorkspace(files)
+    files.nextOpenFile = "/n/a.md"
+    await user.click(await screen.findByRole("button", { name: "Open file" }))
+    const markdown = await markdownView("a.md")
+    files.nextOpenFile = "/n/b.txt"
+    await user.click(screen.getByRole("button", { name: "File" }))
+    await user.click(await screen.findByRole("menuitem", { name: /Open file/ }))
+    const text = await screen.findByRole("textbox", {
+      name: "b.txt, plain text",
+    })
+
+    await user.type(text, "!")
+    await user.click(tab("a.md"))
+    typeInto(markdown, " edited")
+    expect(tab("a.md, unsaved changes")).toBeInTheDocument()
+    expect(tab("b.txt, unsaved changes")).toBeInTheDocument()
+
+    // Undo from the File menu reaches only the active document.
+    await user.click(tab("b.txt, unsaved changes"))
+    await user.click(screen.getByRole("button", { name: "File" }))
+    await user.click(await screen.findByRole("menuitem", { name: "Undo" }))
+    expect(text).toHaveValue("b")
+    expect(markdown.state.doc.toString()).toBe("# A edited")
+    await waitFor(() => expect(tab("b.txt")).toBeInTheDocument())
+    expect(tab("a.md, unsaved changes")).toBeInTheDocument()
+
+    // Saving the active tab writes only its file.
+    await user.click(tab("a.md, unsaved changes"))
+    await user.keyboard("{Control>}s{/Control}")
+    await waitFor(() => expect(files.files.get("/n/a.md")).toBe("# A edited"))
+    expect(files.files.get("/n/b.txt")).toBe("b")
+  })
+
+  it("AC-013: the File menu offers only the commands the active document supports", async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await user.click(
+      await screen.findByRole("button", { name: "New Plain text" })
+    )
+    await screen.findByRole("textbox", { name: /plain text/ })
+    await user.click(screen.getByRole("button", { name: "File" }))
+    expect(
+      await screen.findByRole("menuitem", { name: "Undo" })
+    ).toHaveAttribute("aria-disabled", "true")
+    expect(
+      screen.queryByRole("menuitem", { name: "Find" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("menuitem", { name: "Format document" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("AC-014: restores drafts of both types, and a draft whose file changed comes back as a conflict", async () => {
+    const files = new MemoryFileService({ "/n/a.md": "# A", "/n/b.txt": "b" })
+    const session = new MemorySessionStore()
+    session.session = {
+      documents: [
+        {
+          id: "doc-1",
+          typeId: "markdown",
+          title: "a.md",
+          path: "/n/a.md",
+          draft: "# A draft",
+          baseModifiedMs: 1,
+          copyPending: false,
+        },
+        {
+          id: "doc-2",
+          typeId: "plain-text",
+          title: "b.txt",
+          path: "/n/b.txt",
+          draft: "b draft",
+          baseModifiedMs: 0,
+          copyPending: false,
+        },
+      ],
+      activeId: "doc-1",
+      folder: null,
+    }
+    renderWorkspace(files, session)
+    const markdown = await markdownView("a.md")
+    expect(markdown.state.doc.toString()).toBe("# A draft")
+    expect(tab("a.md, unsaved changes")).toBeInTheDocument()
+    // b.txt was saved by someone else since the draft (version 1, not 0).
+    expect(await screen.findByText("b.txt changed on disk")).toBeInTheDocument()
+    expect(
+      screen.getByRole("textbox", { name: "b.txt, plain text", hidden: true })
+    ).toHaveValue("b draft")
+    expect(files.files.get("/n/b.txt")).toBe("b")
+  })
+
+  it("AC-014: a copy-mode type saves an edited copy and leaves the source untouched", async () => {
+    const user = userEvent.setup()
+    const copyText = {
+      ...plainTextDocumentType,
+      id: "copy-text",
+      extensions: [".ctxt"],
+      save: "copy" as const,
+      saveLabel: { en: "Save Edited Copy", "zh-CN": "保存编辑副本" },
+    }
+    const files = new MemoryFileService({ "/n/report.ctxt": "v1" })
+    const asked: string[] = []
+    files.nextSavePath = (name) => {
+      asked.push(name)
+      return `/n/${name}`
+    }
+    files.nextOpenFile = "/n/report.ctxt"
+    renderWorkspace(
+      files,
+      new MemorySessionStore(),
+      false,
+      createDocumentRegistry([copyText])
+    )
+    await user.click(await screen.findByRole("button", { name: "Open file" }))
+    const text = await screen.findByRole("textbox", {
+      name: "report.ctxt, plain text",
+    })
+    expect(
+      screen.getByRole("button", { name: "Save Edited Copy" })
+    ).toBeInTheDocument()
+
+    await user.type(text, " edited")
+    await user.keyboard("{Control>}s{/Control}")
+    await waitFor(() => expect(tab("report (edited).ctxt")).toBeInTheDocument())
+    expect(asked).toEqual(["report (edited).ctxt"])
+    expect(files.files.get("/n/report (edited).ctxt")).toBe("v1 edited")
+    expect(files.files.get("/n/report.ctxt")).toBe("v1")
+
+    // From now on the tab follows the copy and saves it in place.
+    await user.type(text, "!")
+    await user.keyboard("{Control>}s{/Control}")
+    await waitFor(() =>
+      expect(files.files.get("/n/report (edited).ctxt")).toBe("v1 edited!")
+    )
+    expect(asked).toHaveLength(1)
+  })
+
+  it("AC-014: a cancelled save keeps the edits", async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await user.click(
+      await screen.findByRole("button", { name: "New Plain text" })
+    )
+    const text = await screen.findByRole("textbox", { name: /plain text/ })
+    await user.type(text, "keep me")
+    await user.keyboard("{Control>}s{/Control}")
+    expect(text).toHaveValue("keep me")
+    expect(tab("Untitled text, unsaved changes")).toBeInTheDocument()
   })
 })

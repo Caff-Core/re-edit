@@ -17,6 +17,7 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -44,6 +45,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useMessages } from "@/lib/i18n"
+import {
+  serializeText,
+  textDocuments,
+  type TextDocument,
+} from "@/lib/text-document"
 import type { DocumentEditorProps } from "@/workspace"
 
 import { insertLink, toggleInline } from "../lib/commands/formatting"
@@ -111,7 +117,7 @@ function isViewMode(value: string | undefined): value is ViewMode {
   return VIEW_MODES.some((mode) => mode.value === value)
 }
 
-export type MarkdownDocumentProps = DocumentEditorProps
+export type MarkdownDocumentProps = DocumentEditorProps<TextDocument>
 
 /** "Ctrl+Shift+Enter" -> "Control+Shift+Enter" for aria-keyshortcuts. */
 function ariaShortcut(shortcut: string) {
@@ -164,21 +170,26 @@ const code = toggleInline("`")
 /**
  * One open Markdown buffer: a toolbar, the editing surface, and a live region.
  * Implements the workspace editor contract: it owns dirty detection against
- * the last saved content and serializes the buffer as Markdown text.
+ * the last saved text and writes the buffer back in the file's own encoding,
+ * byte order mark, and line endings.
  */
 export function MarkdownDocument({
   title,
-  initialContent,
-  savedContent,
+  initial,
+  saved: savedDocument,
   onDirtyChange,
   onEdit,
+  onCommandsChange,
   path,
   resolveAsset,
   ref,
 }: MarkdownDocumentProps) {
   const t = useMessages(markdownMessages)
   const editor = useRef<MarkdownEditorHandle>(null)
+  const initialContent = initial.text
+  const savedContent = savedDocument.text
   const saved = useRef(savedContent)
+  const format = useRef(initial.format)
   // A recovered draft starts different from its file, so it starts dirty;
   // the workspace already shows it as dirty.
   const dirty = useRef(initialContent !== savedContent)
@@ -212,21 +223,55 @@ export function MarkdownDocument({
   useImperativeHandle(
     ref,
     () => ({
-      serialize: () => editor.current?.getValue() ?? saved.current,
-      replaceContent: (content, savedContent) => {
-        saved.current = savedContent
-        editor.current?.replace(content)
-        setContent(content)
-        reportDirty(content)
+      serialize: async () =>
+        serializeText(
+          editor.current?.getValue() ?? saved.current,
+          format.current
+        ),
+      replaceContent: (bytes) => {
+        // Decode first: an unsupported file throws and leaves the buffer alone.
+        const next = textDocuments.load(bytes)
+        format.current = next.format
+        saved.current = next.text
+        editor.current?.replace(next.text)
+        setContent(next.text)
+        reportDirty(next.text)
       },
-      markSaved: (content) => {
-        saved.current = content
-        reportDirty(editor.current?.getValue() ?? content)
+      markSaved: (token) => {
+        const text = token as string
+        saved.current = text
+        reportDirty(editor.current?.getValue() ?? text)
+      },
+      draft: () => editor.current?.getValue() ?? saved.current,
+      run: (command) => {
+        const view = editor.current
+        if (!view) return false
+        switch (command) {
+          case "undo":
+            view.undo()
+            return true
+          case "redo":
+            view.redo()
+            return true
+          case "find":
+            view.execute(openSearchPanel)
+            return true
+          case "format":
+            return false
+        }
       },
       focus: () => editor.current?.focus(),
     }),
     [reportDirty]
   )
+
+  useEffect(() => {
+    onCommandsChange?.({
+      undo: status.canUndo,
+      redo: status.canRedo,
+      find: true,
+    })
+  }, [onCommandsChange, status.canUndo, status.canRedo])
 
   const onContentChange = useCallback(
     (next: string) => {

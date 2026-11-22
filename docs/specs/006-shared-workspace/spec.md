@@ -14,10 +14,10 @@ Open, edit, switch, save, and close any registered document type, text or binary
 
 ## Verification status
 
-Planned. Nothing recorded yet.
+Automated checks ran on 2026-11-22 (Vitest and `cargo test` on Fedora 44); the packaged walkthrough (006.04) has not run yet.
 
-| Acceptance | Result |
-|---|---|
-| AC-012 | Planned |
-| AC-013 | Planned |
-| AC-014 | Planned |
+| Acceptance | Automated | Packaged Fedora 44 |
+|---|---|---|
+| AC-012 | Pass: codec round trips (`src/lib/text-codec.test.ts`), byte-exact save and Windows-1252 refusal (`src/app/workspace.test.tsx`), byte commands (`src-tauri/src/native/files.rs`) | Not run yet |
+| AC-013 | Pass: two types side by side with routed Undo and single-file Save (`src/app/workspace.test.tsx`) | Not run yet |
+| AC-014 | Pass: Keep editing, Reload with confirmation, Save a copy, deleted file, drafts of both types, changed-since-draft conflict, copy-mode save, cancelled save (`src/app/workspace.test.tsx`) | Not run yet |
