@@ -13,4 +13,13 @@ Open a folder of Markdown files and move between multiple documents without losi
 
 ## Verification status
 
-Packaged Fedora 44 acceptance checks are pending.
+Packaged Fedora 44 walkthrough, recorded 2026-11-22.
+
+- Build: re-edit 0.2.0-1 RPM (commit 87835b7), installed with `dnf` on Fedora 44 (Linux 7.3), with chromium-157.0.8103.78-1.fc44.
+- Steps: the walkthrough checklist on #16.
+- Evidence: run by the maintainer, who reported "All good" for the walkthroughs. No per-step notes or screenshots were recorded.
+
+| Acceptance | Result |
+|---|---|
+| AC-005 | Pass |
+| AC-006 | Pass |
