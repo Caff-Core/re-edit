@@ -6,8 +6,9 @@ import { ButtonGroup } from "@/components/ui/button-group"
 export interface ChoiceOption<T extends string> {
   value: T
   label: string
-  /** An icon component, such as one from lucide-react. */
-  icon: ComponentType<SVGProps<SVGSVGElement> & { "data-icon"?: string }>
+  /** An icon component, such as one from lucide-react. Optional when the
+   * label says it all, such as a percentage. */
+  icon?: ComponentType<SVGProps<SVGSVGElement> & { "data-icon"?: string }>
   /** Language of the label, for names written in their own language. */
   lang?: string
 }
@@ -55,7 +56,9 @@ export function ChoiceGroup<T extends string>({
             lang={option.lang}
             onClick={() => onChange(option.value)}
           >
-            <option.icon aria-hidden="true" data-icon="inline-start" />
+            {option.icon ? (
+              <option.icon aria-hidden="true" data-icon="inline-start" />
+            ) : null}
             {option.label}
           </Button>
         )
