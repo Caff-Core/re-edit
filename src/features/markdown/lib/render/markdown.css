@@ -89,8 +89,12 @@
   --md-syntax-title: #39ff14;
 }
 
-.markdown-body > :first-child { margin-top: 0; }
-.markdown-body > :last-child { margin-bottom: 0; }
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
 
 .markdown-body :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--font-heading);
@@ -98,22 +102,57 @@
   line-height: 1.3;
   margin: 1.5em 0 0.5em;
 }
-.markdown-body h1 { font-size: 1.5rem; }
-.markdown-body h2 { font-size: 1.25rem; }
-.markdown-body h3 { font-size: 1.125rem; }
-.markdown-body :is(h4, h5, h6) { font-size: 1rem; }
+.markdown-body h1 {
+  font-size: 1.5rem;
+}
+.markdown-body h2 {
+  font-size: 1.25rem;
+}
+.markdown-body h3 {
+  font-size: 1.125rem;
+}
+.markdown-body :is(h4, h5, h6) {
+  font-size: 1rem;
+}
 
-.markdown-body :is(p, ul, ol, blockquote, pre, table, hr) { margin: 0 0 1em; }
-.markdown-body :is(ul, ol) { padding-left: 1.5em; }
-.markdown-body ul { list-style: disc; }
-.markdown-body ol { list-style: decimal; }
-.markdown-body li > :is(ul, ol) { margin: 0.25em 0 0; }
-.markdown-body li + li { margin-top: 0.25em; }
-.markdown-body .contains-task-list { list-style: none; padding-left: 0.25em; }
-.markdown-body .task-list-item input { margin: 0 0.5em 0 0; vertical-align: middle; accent-color: var(--primary); }
+.markdown-body :is(p, ul, ol, blockquote, pre, table, hr) {
+  margin: 0 0 1em;
+}
+.markdown-body :is(ul, ol) {
+  padding-left: 1.5em;
+}
+.markdown-body ul {
+  list-style: disc;
+}
+.markdown-body ol {
+  list-style: decimal;
+}
+.markdown-body li > :is(ul, ol) {
+  margin: 0.25em 0 0;
+}
+.markdown-body li + li {
+  margin-top: 0.25em;
+}
+.markdown-body .contains-task-list {
+  list-style: none;
+  padding-left: 0.25em;
+}
+.markdown-body .task-list-item input {
+  margin: 0 0.5em 0 0;
+  vertical-align: middle;
+  accent-color: var(--primary);
+}
 
-.markdown-body a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.markdown-body a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
+.markdown-body a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-body a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 
 .markdown-body blockquote {
   border-left: 3px solid var(--border);
@@ -139,24 +178,68 @@
   padding: 0.75rem 1rem;
 }
 
-.markdown-body table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
-.markdown-body :is(th, td) { border: 1px solid var(--border); padding: 0.375rem 0.75rem; }
-.markdown-body th { font-weight: 600; background: var(--muted); }
-
-.markdown-body hr { border: 0; border-top: 1px solid var(--border); }
-.markdown-body img { max-width: 100%; height: auto; }
-
-.markdown-body .footnotes { border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 0.8125rem; margin-top: 2em; padding-top: 1em; }
-.markdown-body .sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+.markdown-body table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.markdown-body :is(th, td) {
+  border: 1px solid var(--border);
+  padding: 0.375rem 0.75rem;
+}
+.markdown-body th {
+  font-weight: 600;
+  background: var(--muted);
 }
 
-.markdown-body .hljs-comment, .markdown-body .hljs-quote { color: var(--md-syntax-comment); font-style: italic; }
-.markdown-body :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type) { color: var(--md-syntax-keyword); }
-.markdown-body :is(.hljs-string, .hljs-regexp, .hljs-attr, .hljs-symbol) { color: var(--md-syntax-string); }
-.markdown-body :is(.hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable) { color: var(--md-syntax-number); }
-.markdown-body :is(.hljs-title, .hljs-section, .hljs-name, .hljs-function) { color: var(--md-syntax-title); }
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body .footnotes {
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  margin-top: 2em;
+  padding-top: 1em;
+}
+.markdown-body .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.markdown-body .hljs-comment,
+.markdown-body .hljs-quote {
+  color: var(--md-syntax-comment);
+  font-style: italic;
+}
+.markdown-body
+  :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type) {
+  color: var(--md-syntax-keyword);
+}
+.markdown-body :is(.hljs-string, .hljs-regexp, .hljs-attr, .hljs-symbol) {
+  color: var(--md-syntax-string);
+}
+.markdown-body
+  :is(.hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable) {
+  color: var(--md-syntax-number);
+}
+.markdown-body :is(.hljs-title, .hljs-section, .hljs-name, .hljs-function) {
+  color: var(--md-syntax-title);
+}
 
 /* Placeholder for an image that is not shown (remote, missing, or refused). */
 .markdown-body .md-image-note {
@@ -169,10 +252,18 @@
   gap: 0.375rem;
   padding: 0.25rem 0.5rem;
 }
-.markdown-body .md-image-note svg { flex-shrink: 0; height: 0.875rem; width: 0.875rem; }
+.markdown-body .md-image-note svg {
+  flex-shrink: 0;
+  height: 0.875rem;
+  width: 0.875rem;
+}
 
 /* Math. KaTeX's own styles load with the preview; errors use theme tokens. */
-.markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25rem 0; }
+.markdown-body .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
 .markdown-body .katex-error {
   color: var(--destructive) !important;
   font-family: var(--font-mono);
@@ -180,8 +271,21 @@
 }
 
 /* Mermaid diagrams. */
-.markdown-body .md-mermaid { margin: 0 0 1em; }
-.markdown-body .md-mermaid img { display: block; max-width: 100%; }
-.markdown-body .md-mermaid details { color: var(--muted-foreground); font-size: 0.75rem; margin-top: 0.25rem; }
-.markdown-body .md-mermaid details pre { margin: 0.25rem 0 0; }
-.markdown-body .md-mermaid .md-image-note > span { white-space: pre-wrap; }
+.markdown-body .md-mermaid {
+  margin: 0 0 1em;
+}
+.markdown-body .md-mermaid img {
+  display: block;
+  max-width: 100%;
+}
+.markdown-body .md-mermaid details {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+.markdown-body .md-mermaid details pre {
+  margin: 0.25rem 0 0;
+}
+.markdown-body .md-mermaid .md-image-note > span {
+  white-space: pre-wrap;
+}

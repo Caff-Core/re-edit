@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { getEditorPreferences } from "../lib/preferences"
+import { getEditorPreferences } from "@/lib/codemirror/preferences"
 import { EditorPreferencesForm } from "./editor-preferences-form"
 
 describe("editor font setting", () => {

@@ -2,119 +2,34 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language"
 import { EditorView } from "@codemirror/view"
 import { tags } from "@lezer/highlight"
 
-/**
- * Editor chrome built from the app's semantic tokens, so light, dark, and
- * future themes apply without a separate CodeMirror theme per mode.
- */
-export const editorTheme = EditorView.theme({
-  "&": {
-    height: "100%",
-    color: "var(--foreground)",
-    backgroundColor: "var(--background)",
-  },
-  "&.cm-focused": { outline: "none" },
-  // The prose font comes from the editor preferences (see extensions.ts).
-  ".cm-scroller": {
-    lineHeight: "1.6",
-    overflow: "auto",
-  },
-  ".cm-content": {
-    padding: "1rem 0",
-    caretColor: "var(--foreground)",
-    maxWidth: "80ch",
-  },
-  ".cm-line": { padding: "0 1.5rem" },
-  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--foreground)" },
-  "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection":
-    { backgroundColor: "color-mix(in oklch, var(--primary) 25%, transparent)" },
-  ".cm-placeholder": { color: "var(--muted-foreground)" },
-  ".cm-gutters": {
-    backgroundColor: "var(--background)",
-    color: "var(--muted-foreground)",
-    border: "none",
-  },
-  ".cm-panels": {
-    backgroundColor: "var(--background)",
-    color: "var(--foreground)",
-  },
-  ".cm-panels-top": { borderBottom: "1px solid var(--border)" },
-  // Inline layout: CodeMirror's <br> splits the Find and Replace rows.
-  ".cm-search": {
-    padding: "0.25rem 0.75rem 0.5rem",
-    fontFamily: "var(--font-sans)",
-    fontSize: "0.75rem",
-  },
-  ".cm-search > *": { margin: "0.25rem 0.5rem 0 0", verticalAlign: "middle" },
-  ".cm-search label": {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.25rem",
-  },
-  ".cm-search input[type=checkbox]": { accentColor: "var(--primary)" },
-  ".cm-textfield": {
-    height: "1.75rem",
-    padding: "0 0.5rem",
-    border: "1px solid var(--input)",
-    borderRadius: "var(--radius-md, 0.375rem)",
-    backgroundColor: "transparent",
-    color: "var(--foreground)",
-    fontSize: "0.75rem",
-  },
-  ".cm-textfield:focus-visible": {
-    outline: "2px solid var(--ring)",
-    outlineOffset: "1px",
-  },
-  ".cm-button": {
-    height: "1.75rem",
-    padding: "0 0.5rem",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md, 0.375rem)",
-    backgroundImage: "none",
-    backgroundColor: "transparent",
-    color: "var(--foreground)",
-    fontSize: "0.75rem",
-  },
-  ".cm-button:hover": { backgroundColor: "var(--muted)" },
-  ".cm-button:focus-visible": {
-    outline: "2px solid var(--ring)",
-    outlineOffset: "1px",
-  },
-  ".cm-panel.cm-search": { position: "relative", paddingRight: "2.5rem" },
-  '.cm-panel.cm-search [name="close"]': {
-    position: "absolute",
-    top: "0.5rem",
-    right: "0.75rem",
-    fontSize: "1rem",
-    lineHeight: "1.75rem",
-    color: "var(--muted-foreground)",
-  },
-  // Block-level Markdown, from the line classes in blocks.ts.
-  ".cm-md-codeblock": {
-    backgroundColor: "var(--muted)",
-    fontFamily: "var(--font-mono)",
-  },
-  ".cm-md-codeblock-start": {
-    borderTopLeftRadius: "var(--radius-md, 0.375rem)",
-    borderTopRightRadius: "var(--radius-md, 0.375rem)",
-  },
-  ".cm-md-codeblock-end": {
-    borderBottomLeftRadius: "var(--radius-md, 0.375rem)",
-    borderBottomRightRadius: "var(--radius-md, 0.375rem)",
-  },
-  // A bar in the line's left padding, so quoted text does not shift.
-  ".cm-md-quote": {
-    backgroundImage: "linear-gradient(var(--primary), var(--primary))",
-    backgroundSize: "3px 100%",
-    backgroundPosition: "0.75rem 0",
-    backgroundRepeat: "no-repeat",
-  },
-  ".cm-searchMatch": {
-    backgroundColor: "color-mix(in oklch, var(--primary) 20%, transparent)",
-  },
-  ".cm-searchMatch-selected": {
-    backgroundColor: "color-mix(in oklch, var(--primary) 40%, transparent)",
-  },
-})
+import { editorChrome } from "@/lib/codemirror/theme"
+
+/** The shared chrome plus Markdown's block styles (code band, quote bar). */
+export const editorTheme = [
+  editorChrome,
+  EditorView.theme({
+    // Block-level Markdown, from the line classes in blocks.ts.
+    ".cm-md-codeblock": {
+      backgroundColor: "var(--muted)",
+      fontFamily: "var(--font-mono)",
+    },
+    ".cm-md-codeblock-start": {
+      borderTopLeftRadius: "var(--radius-md, 0.375rem)",
+      borderTopRightRadius: "var(--radius-md, 0.375rem)",
+    },
+    ".cm-md-codeblock-end": {
+      borderBottomLeftRadius: "var(--radius-md, 0.375rem)",
+      borderBottomRightRadius: "var(--radius-md, 0.375rem)",
+    },
+    // A bar in the line's left padding, so quoted text does not shift.
+    ".cm-md-quote": {
+      backgroundImage: "linear-gradient(var(--primary), var(--primary))",
+      backgroundSize: "3px 100%",
+      backgroundPosition: "0.75rem 0",
+      backgroundRepeat: "no-repeat",
+    },
+  }),
+]
 
 /**
  * Per-theme code colors shared with the preview (markdown.css). The editor

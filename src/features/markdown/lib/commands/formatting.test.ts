@@ -1,13 +1,24 @@
-import { EditorSelection, EditorState, type StateCommand } from "@codemirror/state"
+import {
+  EditorSelection,
+  EditorState,
+  type StateCommand,
+} from "@codemirror/state"
 import { describe, expect, it } from "vitest"
 
 import { insertLink, toggleHeading, toggleInline } from "./formatting"
 
 function run(command: StateCommand, doc: string, from: number, to = from) {
-  let state = EditorState.create({ doc, selection: EditorSelection.single(from, to) })
+  let state = EditorState.create({
+    doc,
+    selection: EditorSelection.single(from, to),
+  })
   command({ state, dispatch: (tr) => (state = tr.state) })
   const { from: a, to: b } = state.selection.main
-  return { doc: state.doc.toString(), selected: state.sliceDoc(a, b), cursor: a }
+  return {
+    doc: state.doc.toString(),
+    selected: state.sliceDoc(a, b),
+    cursor: a,
+  }
 }
 
 describe("toggleInline", () => {

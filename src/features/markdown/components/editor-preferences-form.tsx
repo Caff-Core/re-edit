@@ -17,7 +17,7 @@ import {
   type EditorFontFamily,
   type EditorFontSize,
   type EditorPreferences,
-} from "../lib/preferences"
+} from "@/lib/codemirror/preferences"
 import { markdownMessages, type MarkdownMessages } from "../messages"
 
 /** Keys of plain-string messages, so a lookup always yields a string. */

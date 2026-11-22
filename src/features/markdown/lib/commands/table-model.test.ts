@@ -16,7 +16,12 @@ import {
   splitRow,
 } from "./table-model"
 
-const source = ["| Name | Value |", "| ---- | ----: |", "| one  |     1 |", "| two  |     2 |"]
+const source = [
+  "| Name | Value |",
+  "| ---- | ----: |",
+  "| one  |     1 |",
+  "| two  |     2 |",
+]
 
 describe("table model", () => {
   it("splits rows and keeps escaped pipes inside a cell", () => {
@@ -43,7 +48,9 @@ describe("table model", () => {
   })
 
   it("pads short rows to the header width", () => {
-    expect(parseTable(["| a | b |", "| - | - |", "| x |"])?.rows).toEqual([["x", ""]])
+    expect(parseTable(["| a | b |", "| - | - |", "| x |"])?.rows).toEqual([
+      ["x", ""],
+    ])
   })
 
   it("formats with aligned pipes and alignment markers", () => {
@@ -65,7 +72,11 @@ describe("table model", () => {
   it("inserts a row below and moves the cursor into it", () => {
     const table = parseTable(source)!
     const edit = insertRowBelow(table, { row: 0, column: 1 })
-    expect(edit.table.rows).toEqual([["one", "1"], ["", ""], ["two", "2"]])
+    expect(edit.table.rows).toEqual([
+      ["one", "1"],
+      ["", ""],
+      ["two", "2"],
+    ])
     expect(edit.cursor).toEqual({ row: 1, column: 1 })
   })
 
@@ -85,20 +96,30 @@ describe("table model", () => {
 
   it("deletes body rows but never the header", () => {
     const table = parseTable(source)!
-    expect(deleteRow(table, { row: 1, column: 0 })?.table.rows).toEqual([["one", "1"]])
+    expect(deleteRow(table, { row: 1, column: 0 })?.table.rows).toEqual([
+      ["one", "1"],
+    ])
     expect(deleteRow(table, { row: -1, column: 0 })).toBeNull()
   })
 
   it("deletes columns but keeps at least one", () => {
     const table = parseTable(source)!
-    expect(deleteColumn(table, { row: 0, column: 0 })?.table.header).toEqual(["Value"])
+    expect(deleteColumn(table, { row: 0, column: 0 })?.table.header).toEqual([
+      "Value",
+    ])
     expect(deleteColumn(emptyTable(1), { row: 0, column: 0 })).toBeNull()
   })
 
   it("moves between cells in reading order and stops at the ends", () => {
     const table = parseTable(source)!
-    expect(moveCell(table, { row: -1, column: 1 }, 1)).toEqual({ row: 0, column: 0 })
-    expect(moveCell(table, { row: 0, column: 0 }, -1)).toEqual({ row: -1, column: 1 })
+    expect(moveCell(table, { row: -1, column: 1 }, 1)).toEqual({
+      row: 0,
+      column: 0,
+    })
+    expect(moveCell(table, { row: 0, column: 0 }, -1)).toEqual({
+      row: -1,
+      column: 1,
+    })
     expect(moveCell(table, { row: -1, column: 0 }, -1)).toBeNull()
     expect(moveCell(table, { row: 1, column: 1 }, 1)).toBeNull()
   })

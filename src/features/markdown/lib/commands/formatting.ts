@@ -10,9 +10,17 @@ export function toggleInline(marker: string): StateCommand {
   return ({ state, dispatch }) => {
     const transaction = state.changeByRange((range) => {
       const text = state.sliceDoc(range.from, range.to)
-      if (text.length >= size * 2 && text.startsWith(marker) && text.endsWith(marker)) {
+      if (
+        text.length >= size * 2 &&
+        text.startsWith(marker) &&
+        text.endsWith(marker)
+      ) {
         return {
-          changes: { from: range.from, to: range.to, insert: text.slice(size, -size) },
+          changes: {
+            from: range.from,
+            to: range.to,
+            insert: text.slice(size, -size),
+          },
           range: EditorSelection.range(range.from, range.to - size * 2),
         }
       }
@@ -35,7 +43,12 @@ export function toggleInline(marker: string): StateCommand {
         range: EditorSelection.range(range.from + size, range.to + size),
       }
     })
-    dispatch(state.update(transaction, { scrollIntoView: true, userEvent: "input.format" }))
+    dispatch(
+      state.update(transaction, {
+        scrollIntoView: true,
+        userEvent: "input.format",
+      })
+    )
     return true
   }
 }
@@ -58,9 +71,15 @@ export function toggleHeading(level: number): StateCommand {
       if (match && match[1].length === level) {
         return { from: line.from, to: line.from + match[0].length, insert: "" }
       }
-      return { from: line.from, to: line.from + (match?.[0].length ?? 0), insert: prefix }
+      return {
+        from: line.from,
+        to: line.from + (match?.[0].length ?? 0),
+        insert: prefix,
+      }
     })
-    dispatch(state.update({ changes, scrollIntoView: true, userEvent: "input.format" }))
+    dispatch(
+      state.update({ changes, scrollIntoView: true, userEvent: "input.format" })
+    )
     return true
   }
 }
@@ -78,6 +97,11 @@ export const insertLink: StateCommand = ({ state, dispatch }) => {
       range: EditorSelection.range(urlFrom, urlFrom + URL_PLACEHOLDER.length),
     }
   })
-  dispatch(state.update(transaction, { scrollIntoView: true, userEvent: "input.format" }))
+  dispatch(
+    state.update(transaction, {
+      scrollIntoView: true,
+      userEvent: "input.format",
+    })
+  )
   return true
 }

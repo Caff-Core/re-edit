@@ -4,4 +4,4 @@
 export { markdownDocumentType } from "./document-type"
 export { EditorPreferencesForm } from "./components/editor-preferences-form"
 export type { EditorStatus } from "./lib/extensions"
-export type { EditorPreferences } from "./lib/preferences"
+export type { EditorPreferences } from "@/lib/codemirror/preferences"

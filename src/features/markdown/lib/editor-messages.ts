@@ -1,6 +1,7 @@
 import { EditorState, Facet, type Extension } from "@codemirror/state"
 import { placeholder } from "@codemirror/view"
 
+import { codemirrorPhrases } from "@/lib/codemirror/phrases"
 import { defineMessages } from "@/lib/i18n"
 
 /** Cell position words for table announcements. */
@@ -32,25 +33,7 @@ export const editorMessages = defineMessages({
         `Table inserted, ${columns} columns, ${cellEn(-1, 0)}`,
       columnHeader: (column: number) => `Column ${column}`,
     },
-    phrases: {
-      Find: "Find",
-      Replace: "Replace",
-      next: "Next",
-      previous: "Previous",
-      all: "Select all",
-      "match case": "Match case",
-      regexp: "Regular expression",
-      "by word": "Whole word",
-      replace: "Replace",
-      "replace all": "Replace all",
-      close: "Close",
-      "current match": "Current match",
-      "on line": "on line",
-      "replaced $ matches": "Replaced $ matches",
-      "replaced match on line $": "Replaced match on line $",
-      "Go to line": "Go to line",
-      go: "Go",
-    } as Record<string, string>,
+    phrases: codemirrorPhrases.en,
   },
   "zh-CN": {
     placeholder: "开始编写 Markdown",
@@ -70,25 +53,7 @@ export const editorMessages = defineMessages({
         `已插入表格，${columns} 列，${cellZh(-1, 0)}`,
       columnHeader: (column: number) => `列 ${column}`,
     },
-    phrases: {
-      Find: "查找",
-      Replace: "替换",
-      next: "下一个",
-      previous: "上一个",
-      all: "全部选中",
-      "match case": "区分大小写",
-      regexp: "正则表达式",
-      "by word": "全字匹配",
-      replace: "替换",
-      "replace all": "全部替换",
-      close: "关闭",
-      "current match": "当前匹配",
-      "on line": "位于行",
-      "replaced $ matches": "已替换 $ 处匹配",
-      "replaced match on line $": "已替换第 $ 行的匹配",
-      "Go to line": "跳转到行",
-      go: "跳转",
-    },
+    phrases: codemirrorPhrases["zh-CN"],
   },
 })
 
