@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { markdownDocumentType } from "@/features/markdown"
 import { plainTextDocumentType } from "@/test/fixtures/document-types/plain-text"
 import {
+  AUTO_SAVE_DELAY_MS,
   createDocumentRegistry,
   DRAFT_DELAY_MS,
   MemoryFileService,
@@ -22,11 +23,17 @@ const registry = createDocumentRegistry([
 
 function renderWorkspace(
   files = new MemoryFileService(),
-  session = new MemorySessionStore()
+  session = new MemorySessionStore(),
+  autoSave = false
 ) {
   const utils = render(
     <TooltipProvider>
-      <WorkspaceProvider registry={registry} files={files} session={session}>
+      <WorkspaceProvider
+        registry={registry}
+        files={files}
+        session={session}
+        autoSave={autoSave}
+      >
         <WorkspaceView />
       </WorkspaceProvider>
     </TooltipProvider>
@@ -538,5 +545,87 @@ describe("AC-010: export embeds images next to a saved document", () => {
     )
     expect(html).toContain("../secret.png could not be included.")
     expect(html).not.toContain("c2VjcmV0")
+  })
+})
+
+describe("003.04: auto save", () => {
+  const waitForAutoSave = () =>
+    act(
+      () =>
+        new Promise((resolve) => setTimeout(resolve, AUTO_SAVE_DELAY_MS + 100))
+    )
+
+  async function openWith(files: MemoryFileService, autoSave: boolean) {
+    files.nextOpenFile = "/n/a.md"
+    renderWorkspace(files, new MemorySessionStore(), autoSave)
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Open file" }))
+    return markdownView("a.md")
+  }
+
+  it("writes an opened file shortly after the last edit", async () => {
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openWith(files, true)
+    typeInto(view, " one")
+    typeInto(view, " two")
+    expect(files.files.get("/n/a.md")).toBe("# A")
+    await waitForAutoSave()
+    expect(files.files.get("/n/a.md")).toBe("# A one two")
+    expect(tab("a.md")).toBeInTheDocument()
+  })
+
+  it("writes nothing while the setting is off", async () => {
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openWith(files, false)
+    typeInto(view, " edit")
+    await waitForAutoSave()
+    expect(files.files.get("/n/a.md")).toBe("# A")
+    expect(tab("a.md, unsaved changes")).toBeInTheDocument()
+  })
+
+  it("never overwrites a file changed elsewhere", async () => {
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    const view = await openWith(files, true)
+    typeInto(view, " mine")
+    // The file changes elsewhere before the pending auto save fires.
+    act(() => files.externalWrite("/n/a.md", "# Theirs"))
+    await waitForAutoSave()
+    expect(files.files.get("/n/a.md")).toBe("# Theirs")
+    expect(await screen.findByText("a.md changed on disk")).toBeInTheDocument()
+    typeInto(view, " more")
+    await waitForAutoSave()
+    expect(files.files.get("/n/a.md")).toBe("# Theirs")
+  })
+
+  it("stops after a failed write until the user retries", async () => {
+    const files = new MemoryFileService({ "/n/a.md": "# A" })
+    files.failWrites = 5
+    const view = await openWith(files, true)
+    typeInto(view, " x")
+    await waitForAutoSave()
+    expect(await screen.findByText("a.md was not saved")).toBeInTheDocument()
+    expect(files.failWrites).toBe(4)
+    typeInto(view, " y")
+    await waitForAutoSave()
+    expect(files.failWrites).toBe(4)
+  })
+
+  it("leaves untitled documents to draft recovery", async () => {
+    const files = new MemoryFileService()
+    let asked = 0
+    files.nextSavePath = () => {
+      asked++
+      return null
+    }
+    const user = userEvent.setup()
+    renderWorkspace(files, new MemorySessionStore(), true)
+    await user.click(
+      await screen.findByRole("button", { name: "New Markdown document" })
+    )
+    typeInto(await markdownView("Untitled"), "draft")
+    await waitForAutoSave()
+    expect(asked).toBe(0)
+    expect(tab("Untitled, unsaved changes")).toBeInTheDocument()
   })
 })

@@ -20,6 +20,7 @@ import {
   type FolderListing,
 } from "@/services/native"
 
+import { AUTO_SAVE_DELAY_MS } from "./auto-save-setting"
 import { workspaceMessages, type WorkspaceText } from "./messages"
 
 import { basename, isInside } from "./paths"
@@ -105,11 +106,18 @@ export function WorkspaceProvider({
   registry,
   files,
   session,
+  autoSave = false,
   children,
 }: {
   registry: DocumentRegistry
   files: FileService
   session: SessionStore
+  /**
+   * Save documents that have a file shortly after the last edit. Uses the
+   * normal save, so the on-disk version check still applies, and pauses for
+   * a document with a conflict or a failed save until it is resolved.
+   */
+  autoSave?: boolean
   children: ReactNode
 }) {
   const [state, dispatch] = useReducer(workspaceReducer, initialWorkspaceState)
@@ -129,6 +137,10 @@ export function WorkspaceProvider({
   const restored = useRef(false)
   const restoring = useRef(false)
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoSaveTimers = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  )
+  const blocked = useRef({ saveErrors, conflicts })
   const extensions = useMemo(
     () => registry.list().flatMap((t) => t.extensions),
     [registry]
@@ -137,7 +149,8 @@ export function WorkspaceProvider({
   useLayoutEffect(() => {
     stateRef.current = state
     folderRef.current = folder
-  }, [state, folder])
+    blocked.current = { saveErrors, conflicts }
+  }, [state, folder, saveErrors, conflicts])
 
   const rememberRecent = useCallback(
     (entry: RecentEntry) => {
@@ -545,10 +558,49 @@ export function WorkspaceProvider({
     [conflicts, openDocument, locale]
   )
 
-  const noteEdit = useCallback(() => {
-    if (draftTimer.current) clearTimeout(draftTimer.current)
-    draftTimer.current = setTimeout(persistSession, DRAFT_DELAY_MS)
-  }, [persistSession])
+  const scheduleAutoSave = useCallback(
+    (id: string) => {
+      const timers = autoSaveTimers.current
+      clearTimeout(timers.get(id))
+      timers.set(
+        id,
+        setTimeout(() => {
+          timers.delete(id)
+          const document = stateRef.current.documents.find((d) => d.id === id)
+          const { saveErrors, conflicts } = blocked.current
+          if (!document?.path || !document.dirty) return
+          // A failed save or a conflict waits for the user, so auto save
+          // never retries in a loop or overwrites a newer disk version.
+          if (id in saveErrors || id in conflicts) return
+          void writeDocument(id, document.path, document.modifiedMs)
+        }, AUTO_SAVE_DELAY_MS)
+      )
+    },
+    [writeDocument]
+  )
+
+  // Turning auto save on saves what is already pending; turning it off
+  // cancels pending saves.
+  useEffect(() => {
+    const timers = autoSaveTimers.current
+    if (autoSave) {
+      for (const document of stateRef.current.documents)
+        if (document.dirty && document.path) scheduleAutoSave(document.id)
+    }
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer))
+      timers.clear()
+    }
+  }, [autoSave, scheduleAutoSave])
+
+  const noteEdit = useCallback(
+    (id: string) => {
+      if (draftTimer.current) clearTimeout(draftTimer.current)
+      draftTimer.current = setTimeout(persistSession, DRAFT_DELAY_MS)
+      if (autoSave) scheduleAutoSave(id)
+    },
+    [persistSession, autoSave, scheduleAutoSave]
+  )
 
   // Restore the previous session once: drafts come back unsaved against the
   // file on disk, clean files are read again.
