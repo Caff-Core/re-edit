@@ -1,0 +1,11 @@
+{
+  "name": "pdf-engine-spike",
+  "private": true,
+  "type": "module",
+  "description": "007.01 round-trip spike. Not part of the app build.",
+  "dependencies": {
+    "@cantoo/pdf-lib": "2.11.1",
+    "@embedpdf/pdfium": "2.15.1",
+    "pdfjs-dist": "6.5.438"
+  }
+}
