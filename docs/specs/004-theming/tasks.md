@@ -7,3 +7,4 @@
 - [x] 004.02 Extend the four motion presets to remaining shared surfaces. (REQ-008, AC-008)
 - [x] 004.03 Localize labels and status text, then perform Fedora keyboard, contrast, and screen-reader checks. (REQ-009, AC-009) Contrast is checked automatically; the Orca walkthrough runs with 004.04.
 - [x] 004.04 Run the integrated acceptance walkthrough and record results for AC-007, AC-008, AC-009.
+- [x] 004.06 Add Dracula, Nord, Gruvbox Light, Gruvbox Dark, Catppuccin Latte, and Catppuccin Mocha. Check: each previews, commits, survives a restart, and passes the contrast test. Added on request.

@@ -68,6 +68,12 @@ describe("AC-007: theme catalog and preview", () => {
       "Default Dark",
       "Solarized Light",
       "Solarized Dark",
+      "Dracula",
+      "Nord",
+      "Gruvbox Light",
+      "Gruvbox Dark",
+      "Catppuccin Latte",
+      "Catppuccin Mocha",
     ])
 
     // Rapid previews: each highlight shows its theme right away.
@@ -185,6 +191,8 @@ describe("004.01: preview, dismissal, focus, and persistence across themes", () 
     ["Default Dark", "dark", ["dark"]],
     ["Solarized Light", "solarized-light", ["light", "theme-solarized-light"]],
     ["Solarized Dark", "solarized-dark", ["dark", "theme-solarized-dark"]],
+    ["Dracula", "dracula", ["dark", "theme-dracula"]],
+    ["Gruvbox Light", "gruvbox-light", ["light", "theme-gruvbox-light"]],
     ["System", "system", ["light"]],
   ] as const)(
     "keeps %s across a restart after previewing others",

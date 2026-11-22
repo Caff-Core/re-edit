@@ -13,7 +13,7 @@ An offline Markdown editor for the Linux desktop. Fedora 44 is the first target.
 - File access through native dialogs, limited to the files and folders you pick; tabs, folder tree, recents, draft recovery, and optional auto save
 - CodeMirror 6 Markdown editor in `src/features/markdown`
 - Interface size setting (100% to 150%, Ctrl+= / Ctrl+- / Ctrl+0)
-- Themes (System, Default Light and Dark, Solarized Light and Dark) with preview, and None, Subtle, Normal, and Bouncy motion presets
+- Themes (System, Default Light and Dark, Solarized, Dracula, Nord, Gruvbox, and Catppuccin) with preview, and None, Subtle, Normal, and Bouncy motion presets
 - Export to standalone HTML and to PDF (PDF uses Chromium, which the RPM recommends; without it: `sudo dnf install chromium`)
 - English and Simplified Chinese interface (`src/lib/i18n`); the language follows the desktop unless set in Settings
 

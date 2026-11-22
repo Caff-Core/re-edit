@@ -143,6 +143,191 @@
 }
 
 /*
+ * Dracula, Nord, Gruvbox, and Catppuccin (all MIT-licensed palettes). Hues
+ * are the palettes'; lightness is adjusted only where a pair falls below
+ * WCAG AA (theme-contrast.test.ts). Each also carries its scheme class.
+ */
+.theme-dracula {
+    color-scheme: dark;
+    --background: #282a36;
+    --foreground: #f8f8f2;
+    --card: #21222c;
+    --card-foreground: #f8f8f2;
+    --popover: #21222c;
+    --popover-foreground: #f8f8f2;
+    --primary: #bd93f9;
+    --primary-foreground: #282a36;
+    --secondary: #343746;
+    --secondary-foreground: #f8f8f2;
+    --muted: #343746;
+    --muted-foreground: #a5b7ed;
+    --accent: #44475a;
+    --accent-foreground: #f8f8f2;
+    --destructive: #fc5c5a;
+    --border: #44475a;
+    --input: #565970;
+    --ring: #6474a6;
+    --sidebar: #21222c;
+    --sidebar-foreground: #f8f8f2;
+    --sidebar-primary: #bd93f9;
+    --sidebar-primary-foreground: #282a36;
+    --sidebar-accent: #343746;
+    --sidebar-accent-foreground: #f8f8f2;
+    --sidebar-border: #44475a;
+    --sidebar-ring: #6474a6;
+}
+
+.theme-nord {
+    color-scheme: dark;
+    --background: #2e3440;
+    --foreground: #eceff4;
+    --card: #3b4252;
+    --card-foreground: #eceff4;
+    --popover: #3b4252;
+    --popover-foreground: #eceff4;
+    --primary: #88c0d0;
+    --primary-foreground: #2e3440;
+    --secondary: #3b4252;
+    --secondary-foreground: #eceff4;
+    --muted: #3b4252;
+    --muted-foreground: #d8dee9;
+    --accent: #434c5e;
+    --accent-foreground: #eceff4;
+    --destructive: #f7949b;
+    --border: #434c5e;
+    --input: #4c566a;
+    --ring: #81a1c1;
+    --sidebar: #2b303b;
+    --sidebar-foreground: #eceff4;
+    --sidebar-primary: #88c0d0;
+    --sidebar-primary-foreground: #2e3440;
+    --sidebar-accent: #3b4252;
+    --sidebar-accent-foreground: #eceff4;
+    --sidebar-border: #434c5e;
+    --sidebar-ring: #81a1c1;
+}
+
+.theme-gruvbox-dark {
+    color-scheme: dark;
+    --background: #282828;
+    --foreground: #ebdbb2;
+    --card: #32302f;
+    --card-foreground: #ebdbb2;
+    --popover: #32302f;
+    --popover-foreground: #ebdbb2;
+    --primary: #fabd2f;
+    --primary-foreground: #282828;
+    --secondary: #3c3836;
+    --secondary-foreground: #ebdbb2;
+    --muted: #3c3836;
+    --muted-foreground: #c9baa4;
+    --accent: #504945;
+    --accent-foreground: #ebdbb2;
+    --destructive: #fe6954;
+    --border: #504945;
+    --input: #665c54;
+    --ring: #a89984;
+    --sidebar: #1d2021;
+    --sidebar-foreground: #ebdbb2;
+    --sidebar-primary: #fabd2f;
+    --sidebar-primary-foreground: #282828;
+    --sidebar-accent: #3c3836;
+    --sidebar-accent-foreground: #ebdbb2;
+    --sidebar-border: #504945;
+    --sidebar-ring: #a89984;
+}
+
+.theme-gruvbox-light {
+    color-scheme: light;
+    --background: #fbf1c7;
+    --foreground: #3c3836;
+    --card: #fbf1c7;
+    --card-foreground: #3c3836;
+    --popover: #fbf1c7;
+    --popover-foreground: #3c3836;
+    --primary: #076678;
+    --primary-foreground: #fbf1c7;
+    --secondary: #ebdbb2;
+    --secondary-foreground: #3c3836;
+    --muted: #ebdbb2;
+    --muted-foreground: #6a5d52;
+    --accent: #ebdbb2;
+    --accent-foreground: #3c3836;
+    --destructive: #9d0006;
+    --border: #d5c4a1;
+    --input: #bdae93;
+    --ring: #7c6f64;
+    --sidebar: #f2e5bc;
+    --sidebar-foreground: #3c3836;
+    --sidebar-primary: #076678;
+    --sidebar-primary-foreground: #fbf1c7;
+    --sidebar-accent: #ebdbb2;
+    --sidebar-accent-foreground: #3c3836;
+    --sidebar-border: #d5c4a1;
+    --sidebar-ring: #7c6f64;
+}
+
+.theme-catppuccin-latte {
+    color-scheme: light;
+    --background: #eff1f5;
+    --foreground: #4c4f69;
+    --card: #eff1f5;
+    --card-foreground: #4c4f69;
+    --popover: #eff1f5;
+    --popover-foreground: #4c4f69;
+    --primary: #8839ef;
+    --primary-foreground: #eff1f5;
+    --secondary: #e6e9ef;
+    --secondary-foreground: #4c4f69;
+    --muted: #e6e9ef;
+    --muted-foreground: #5e6076;
+    --accent: #dce0e8;
+    --accent-foreground: #4c4f69;
+    --destructive: #d20f39;
+    --border: #ccd0da;
+    --input: #bcc0cc;
+    --ring: #7f8294;
+    --sidebar: #e6e9ef;
+    --sidebar-foreground: #4c4f69;
+    --sidebar-primary: #8839ef;
+    --sidebar-primary-foreground: #eff1f5;
+    --sidebar-accent: #dce0e8;
+    --sidebar-accent-foreground: #4c4f69;
+    --sidebar-border: #ccd0da;
+    --sidebar-ring: #7f8294;
+}
+
+.theme-catppuccin-mocha {
+    color-scheme: dark;
+    --background: #1e1e2e;
+    --foreground: #cdd6f4;
+    --card: #181825;
+    --card-foreground: #cdd6f4;
+    --popover: #181825;
+    --popover-foreground: #cdd6f4;
+    --primary: #cba6f7;
+    --primary-foreground: #1e1e2e;
+    --secondary: #313244;
+    --secondary-foreground: #cdd6f4;
+    --muted: #313244;
+    --muted-foreground: #b1b8d4;
+    --accent: #45475a;
+    --accent-foreground: #cdd6f4;
+    --destructive: #f38ba8;
+    --border: #313244;
+    --input: #45475a;
+    --ring: #7f849c;
+    --sidebar: #181825;
+    --sidebar-foreground: #cdd6f4;
+    --sidebar-primary: #cba6f7;
+    --sidebar-primary-foreground: #1e1e2e;
+    --sidebar-accent: #313244;
+    --sidebar-accent-foreground: #cdd6f4;
+    --sidebar-border: #313244;
+    --sidebar-ring: #7f849c;
+}
+
+/*
  * Motion presets (REQ-008), set as data-motion on <html> by MotionProvider.
  * None also applies when the system asks for reduced motion.
  */
