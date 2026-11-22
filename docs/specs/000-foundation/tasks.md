@@ -11,3 +11,4 @@
 - [x] 000.07 Replace the native window decorations with a custom title bar. Check: on Fedora 44 the window opens without the system title bar, drags from the header, resizes from its edges, and minimize, maximize and close work by mouse and keyboard.
 - [x] 000.08 Version the app from `package.json` and bump to 0.2.0. Check: the RPM is `re-edit-0.2.0-1`, upgrades 0.1.0, and the crate version matches (`crate_version_matches_package_json`).
 - [x] 000.09 Add an interface size setting (100%, 112.5%, 125%, 150%) with Ctrl+=, Ctrl+-, and Ctrl+0. Check: each size scales the whole interface without clipping and survives a restart.
+- [x] 000.10 Hide the webview's own context menu (Back, Forward, Stop, Reload, Inspect Element) outside text fields, the editor, and selected text. Check: plain surfaces show nothing on right-click, text keeps Copy/Paste and spelling, and the tab menu still opens. Added on request.
