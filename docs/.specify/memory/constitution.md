@@ -2,11 +2,11 @@
 
 ## Local files and recovery
 
-Use Fedora 44 as the first desktop target. Authoring, preview, and export work offline. The current buffer is authoritative until a save succeeds. Preserve edits on cancellation, write failure, and external changes. Native operations stay behind typed service boundaries and user-selected paths.
+Use Fedora 44 as the first desktop target. Authoring, preview, and export work offline. The current buffer is authoritative until a save succeeds. Preserve edits on cancellation, write failure, and external changes. Native operations stay behind typed service boundaries and user-selected paths. Never change bytes the user did not edit: keep each file's encoding, byte order mark, and line endings, and refuse a file rather than decode it lossily. Text and binary documents save through the same service.
 
 ## Document types
 
-The workspace owns document identity, tab order, shared metadata, and layout. Each document feature owns parsing, editing, rendering, its save strategy, and undo history. Register Markdown in the workspace registry. Prove the final tab contract with a second test document type. Direct PDF export is a Markdown operation, while a future PDF editor belongs in its own feature module.
+The workspace owns document identity, tab order, shared metadata, and layout. Each document feature owns parsing, editing, rendering, its save strategy, and undo history. Register Markdown in the workspace registry. Prove the final tab contract with a second test document type. Direct PDF export stays a Markdown operation; editing PDF files belongs to the PDF feature. Libraries a feature adds use permissive licences.
 
 ## Atomic design
 
@@ -18,4 +18,4 @@ Target Web Content Accessibility Guidelines (WCAG) 2.2 AA. Verify the packaged a
 
 ## Scope and release evidence
 
-Keep requirement and acceptance identifiers stable. Preserve a feature's spec, plan, and tasks together. Record actual verification separately from planned checks. Cloud sync, version history, and real-time collaboration are deferred. Release requires the five feature milestones and the packaged Fedora acceptance walkthrough.
+Keep requirement and acceptance identifiers stable. Preserve a feature's spec, plan, and tasks together. Record actual verification separately from planned checks. Cloud sync, version history, real-time collaboration, and Word editing are deferred. A release names the milestones it includes and requires each one's packaged Fedora acceptance walkthrough.
