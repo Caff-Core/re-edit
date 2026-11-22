@@ -12,6 +12,9 @@ export interface ChoiceOption<T extends string> {
   lang?: string
 }
 
+const PRESSED =
+  "aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90 aria-pressed:hover:text-primary-foreground dark:aria-pressed:bg-primary dark:aria-pressed:hover:bg-primary/90"
+
 export interface ChoiceGroupProps<T extends string> {
   options: readonly ChoiceOption<T>[]
   value: T
@@ -25,9 +28,10 @@ export interface ChoiceGroupProps<T extends string> {
 /**
  * One choice from a few, as joined outline buttons with icons (ReUI's
  * c-button-group-3 pattern). The chosen button reports `aria-pressed` and
- * takes the same fill the outline variant uses for its open state
- * (`aria-expanded:bg-muted`), so the group's border stays continuous.
- * Every button stays in the tab order.
+ * fills with the theme's primary color: a muted fill nearly vanishes
+ * against the outline fill in some themes (Dracula), while primary text on
+ * primary is contrast-checked in every theme. Every button stays in the
+ * tab order.
  */
 export function ChoiceGroup<T extends string>({
   options,
@@ -46,7 +50,7 @@ export function ChoiceGroup<T extends string>({
             type="button"
             size="sm"
             variant="outline"
-            className="aria-pressed:bg-muted aria-pressed:text-foreground dark:aria-pressed:bg-muted"
+            className={PRESSED}
             aria-pressed={selected}
             lang={option.lang}
             onClick={() => onChange(option.value)}
