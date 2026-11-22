@@ -48,6 +48,15 @@ mod tests {
         assert_eq!(info.platform, std::env::consts::OS);
     }
 
+    /// package.json is the version source: tauri.conf.json reads it, and the
+    /// crate version (shown in the status bar) must match it.
+    #[test]
+    fn crate_version_matches_package_json() {
+        let manifest = include_str!("../../../package.json");
+        let package: serde_json::Value = serde_json::from_str(manifest).expect("package.json");
+        assert_eq!(package["version"], env!("CARGO_PKG_VERSION"));
+    }
+
     #[test]
     fn app_info_serializes_camel_case() {
         let json = serde_json::to_value(app_info()).expect("serializes");
