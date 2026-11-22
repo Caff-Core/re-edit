@@ -42,7 +42,14 @@ export function workspaceReducer(
         ...state,
         documents: state.documents.map((d) =>
           d.id === action.id
-            ? { ...d, path: action.path, title: action.title }
+            ? // The tab now follows the file it was saved to, so a pending
+              // "save as copy" is done.
+              {
+                ...d,
+                path: action.path,
+                title: action.title,
+                copyPending: false,
+              }
             : d
         ),
       }
@@ -79,9 +86,7 @@ function closeDocuments(state: WorkspaceState, ids: string[]): WorkspaceState {
     return { documents, activeId: state.activeId }
   }
   const index = state.documents.findIndex((d) => d.id === state.activeId)
-  const after = state.documents
-    .slice(index + 1)
-    .find((d) => !closing.has(d.id))
+  const after = state.documents.slice(index + 1).find((d) => !closing.has(d.id))
   const before = state.documents
     .slice(0, index)
     .findLast((d) => !closing.has(d.id))

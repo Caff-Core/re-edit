@@ -4,37 +4,62 @@ import type { Locale, LocalizedText } from "@/lib/i18n"
 
 /**
  * Contract between the workspace and a document feature. The workspace owns
- * identity, tab order, titles, file paths, dirty display, saving, and draft
- * recovery. The feature owns parsing, editing, undo history, dirty detection,
- * and serialization.
+ * identity, tab order, titles, file paths, dirty display, saving, drafts,
+ * conflicts, and command routing. The feature owns decoding, editing, undo
+ * history, dirty detection, validation, and encoding. Content crosses the
+ * boundary as bytes, so text and binary formats share one path.
  */
+
+/** Commands the workspace routes to the active editor when it supports them. */
+export type DocumentCommand = "undo" | "redo" | "find" | "format"
+
+/**
+ * The commands an editor supports right now: a key is present when the
+ * command exists for this document, and its value says whether it can run.
+ */
+export type DocumentCommandState = Partial<Record<DocumentCommand, boolean>>
+
+/** What a save writes, and the token that marks that version as saved. */
+export interface SerializedDocument {
+  bytes: Uint8Array
+  /** Passed back to `markSaved` once the bytes are on disk. Opaque to the workspace. */
+  token: unknown
+}
+
 export interface DocumentEditorHandle {
-  /** Current content in the format the feature saves. */
-  serialize(): string
+  /** The document in its file format, ready to write. */
+  serialize(): Promise<SerializedDocument>
   /**
-   * Records `content` as the saved version. The feature reports clean only
-   * while its content equals it, so edits made during a save stay dirty.
+   * Records the version `token` stands for as saved. The editor reports
+   * clean only while it still matches, so edits made during a save stay dirty.
    */
-  markSaved(content: string): void
+  markSaved(token: unknown): void
   /**
-   * Replaces the whole buffer with `content` as one undoable edit and records
-   * `saved` as the saved version (used to load a file changed on disk).
+   * Replaces the whole document with `bytes` from disk as one undoable step
+   * and records it as saved. Throws an UnsupportedDocumentError when the
+   * bytes cannot be loaded; the document is then unchanged.
    */
-  replaceContent(content: string, saved: string): void
+  replaceContent(bytes: Uint8Array): void
+  /** A string the type's `fromDraft` can restore unsaved work from. */
+  draft(): string
+  /** Runs a routed command. Returns false when the editor does not support it. */
+  run(command: DocumentCommand): boolean
   focus(): void
 }
 
-export interface DocumentEditorProps {
+export interface DocumentEditorProps<D = unknown> {
   documentId: string
   title: string
-  /** Content the editor starts with (a recovered draft or the file). */
-  initialContent: string
-  /** Last saved content; differs from initialContent for a recovered draft. */
-  savedContent: string
+  /** The document the editor starts with (a recovered draft or the file). */
+  initial: D
+  /** The last saved version; differs from `initial` for a recovered draft. */
+  saved: D
   /** Called whenever the document becomes dirty or clean. */
   onDirtyChange: (dirty: boolean) => void
   /** Called after any edit, so the workspace can store a recovery draft. */
   onEdit: () => void
+  /** Called whenever the routed commands the editor supports, or can run, change. */
+  onCommandsChange?: (commands: DocumentCommandState) => void
   /** Path on disk, or null while the document is untitled. */
   path: string | null
   /**
@@ -58,12 +83,19 @@ export interface DocumentExportContext {
 export interface DocumentExporter {
   /** A complete page that embeds everything it shows and loads nothing. */
   toStandaloneHtml(
-    content: string,
+    bytes: Uint8Array,
     context: DocumentExportContext
   ): Promise<string>
 }
 
-export interface DocumentType {
+/**
+ * How the first save of a file opened from disk works. "in-place" writes the
+ * file; "copy" asks for a new path (PDF's Save Edited Copy) and the tab then
+ * follows the copy.
+ */
+export type SaveMode = "in-place" | "copy"
+
+export interface DocumentType<D = unknown> {
   /** Stable identifier, for example "markdown". */
   id: string
   /** Name shown in menus, for example "Markdown document". */
@@ -72,11 +104,31 @@ export interface DocumentType {
   defaultTitle: LocalizedText
   /** File extensions this type opens, lowercase with the dot. The first is the default. */
   extensions: string[]
-  createEmpty(): string
-  Editor: ComponentType<DocumentEditorProps>
+  /** Largest file this type opens, in bytes. Defaults to 20 MB; the host caps it at 200 MB. */
+  maxBytes?: number
+  /**
+   * Decodes a file. Throws an UnsupportedDocumentError when the file cannot
+   * be edited without changing or losing parts of it.
+   */
+  load(bytes: Uint8Array): D
+  createEmpty(): D
+  /** Restores unsaved work from `draft()`, given the saved version (or an empty document). */
+  fromDraft(draft: string, saved: D): D
+  /** Defaults to "in-place". */
+  save?: SaveMode
+  /** Label of the primary save action when it differs from "Save". */
+  saveLabel?: LocalizedText
+  Editor: ComponentType<DocumentEditorProps<D>>
   /** Present when the type can be exported to HTML and PDF. */
   exporter?: DocumentExporter
 }
+
+/**
+ * Registers a typed document type. The registry holds types of every
+ * document shape, so it sees them as `DocumentType<unknown>`.
+ */
+export const defineDocumentType = <D>(type: DocumentType<D>): DocumentType =>
+  type as unknown as DocumentType
 
 export interface OpenDocument {
   id: string
@@ -84,9 +136,21 @@ export interface OpenDocument {
   title: string
   /** Absolute path on disk, or null for a document that was never saved. */
   path: string | null
-  initialContent: string
-  savedContent: string
+  /** The feature's document the editor starts from. */
+  initial: unknown
+  /** The last saved version, the editor's dirty baseline. */
+  saved: unknown
   dirty: boolean
   /** Modification time of the disk version this tab is based on. */
   modifiedMs: number | null
+  /**
+   * True until the first save of a "copy" type opened from disk, so that
+   * save asks for a new path and leaves the source untouched.
+   */
+  copyPending: boolean
+  /**
+   * The draft this tab was restored from, kept for the session until its
+   * editor has loaded and can produce a fresh one.
+   */
+  restoredDraft: string | null
 }

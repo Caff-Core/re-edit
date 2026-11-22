@@ -63,11 +63,42 @@ describe("native file errors", () => {
       message: "/etc/passwd is outside",
     })
     const { nativeService } = await import("./index")
-    await expect(nativeService.readTextFile("/etc/passwd")).rejects.toThrow(
+    await expect(nativeService.readFile("/etc/passwd")).rejects.toThrow(
       "/etc/passwd is outside"
     )
-    expect(core.invoke).toHaveBeenCalledWith("read_text_file", {
+    expect(core.invoke).toHaveBeenCalledWith("read_file", {
       path: "/etc/passwd",
+      maxBytes: undefined,
+    })
+  })
+
+  it("reads the modification time and the bytes from one framed response", async () => {
+    const frame = new Uint8Array(8 + 3)
+    new DataView(frame.buffer).setBigUint64(0, 1_700_000_000_123n, true)
+    frame.set([0xef, 0xbb, 0xbf], 8)
+    core.invoke.mockResolvedValue(frame.buffer)
+    const { nativeService } = await import("./index")
+    const file = await nativeService.readFile("/n/a.txt", 50_000_000)
+    expect(file.modifiedMs).toBe(1_700_000_000_123)
+    expect([...file.bytes]).toEqual([0xef, 0xbb, 0xbf])
+    expect(core.invoke).toHaveBeenCalledWith("read_file", {
+      path: "/n/a.txt",
+      maxBytes: 50_000_000,
+    })
+  })
+
+  it("sends bytes as a raw body with the path in a header", async () => {
+    core.invoke.mockResolvedValue(42)
+    const { nativeService } = await import("./index")
+    const bytes = new Uint8Array([0, 255, 13, 10])
+    await expect(
+      nativeService.writeFile("/n/a b 中.pdf", bytes, 7)
+    ).resolves.toBe(42)
+    expect(core.invoke).toHaveBeenCalledWith("write_file", bytes, {
+      headers: {
+        "x-path": "%2Fn%2Fa%20b%20%E4%B8%AD.pdf",
+        "x-expected-modified-ms": "7",
+      },
     })
   })
 

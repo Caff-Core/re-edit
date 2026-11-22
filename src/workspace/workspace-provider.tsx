@@ -37,7 +37,13 @@ import {
   workspaceReducer,
   type WorkspaceState,
 } from "./state"
-import type { DocumentEditorHandle, OpenDocument } from "./types"
+import type {
+  DocumentCommand,
+  DocumentCommandState,
+  DocumentEditorHandle,
+  DocumentType,
+  OpenDocument,
+} from "./types"
 
 export type FolderState =
   | { path: string; status: "loading" }
@@ -46,9 +52,21 @@ export type FolderState =
 
 /** The disk version of a document that changed while it had unsaved edits. */
 export interface DiskConflict {
-  /** Text on disk, or null when the file was deleted. */
-  diskContent: string | null
+  /** The file on disk, or null when it was deleted. */
+  disk: Uint8Array | null
   modifiedMs: number
+}
+
+const sameBytes = (a: Uint8Array, b: Uint8Array) =>
+  a.length === b.length && a.every((byte, i) => byte === b[i])
+
+/** "Report.pdf" -> "Report (edited).pdf", for a type that saves a copy first. */
+function copyName(path: string, label: (name: string) => string) {
+  const name = basename(path)
+  const dot = name.lastIndexOf(".")
+  return dot > 0
+    ? `${label(name.slice(0, dot))}${name.slice(dot)}`
+    : label(name)
 }
 
 export interface WorkspaceNotice {
@@ -66,12 +84,17 @@ export interface WorkspaceApi {
   /** The last save failure per document; describe it when shown. */
   saveErrors: Record<string, unknown>
   conflicts: Record<string, DiskConflict>
-  /** Resolve a conflict by writing the buffer over the disk version. */
-  keepMine(id: string): Promise<boolean>
-  /** Resolve a conflict by loading the disk version (undoable). */
-  takeDiskVersion(id: string): void
-  /** Open the disk version in a new tab, keeping both available. */
-  openDiskCopy(id: string): void
+  /** Dismiss a conflict and go on editing; the next save asks again. */
+  keepEditing(id: string): void
+  /** Resolve a conflict by loading the disk version (undoable). Ask first. */
+  reloadFromDisk(id: string): void
+  /** Resolve a conflict by saving the buffer to a new path. */
+  saveCopy(id: string): Promise<boolean>
+  /** Routed commands each document supports, and whether they can run now. */
+  commands: Record<string, DocumentCommandState>
+  setCommands(id: string, commands: DocumentCommandState): void
+  /** Runs a routed command in a document's editor. False when unsupported. */
+  runCommand(id: string, command: DocumentCommand): boolean
   newDocument(typeId: string): void
   openPath(path: string): Promise<void>
   openFileDialog(): Promise<void>
@@ -131,6 +154,9 @@ export function WorkspaceProvider({
   const [saveErrors, setSaveErrors] = useState<Record<string, unknown>>({})
   const { locale } = useLocale()
   const [conflicts, setConflicts] = useState<Record<string, DiskConflict>>({})
+  const [commands, setCommandsState] = useState<
+    Record<string, DocumentCommandState>
+  >({})
   const ownWrites = useRef(new Map<string, number>())
   const editors = useRef(new Map<string, DocumentEditorHandle>())
   const pendingFocus = useRef<string | null>(null)
@@ -187,8 +213,10 @@ export function WorkspaceProvider({
         title: d.title,
         path: d.path,
         draft: d.dirty
-          ? (editors.current.get(d.id)?.serialize() ?? d.initialContent)
+          ? (editors.current.get(d.id)?.draft() ?? d.restoredDraft)
           : null,
+        baseModifiedMs: d.modifiedMs,
+        copyPending: d.copyPending,
       })),
       activeId,
       folder: folderRef.current?.path ?? null,
@@ -216,7 +244,7 @@ export function WorkspaceProvider({
     (typeId: string) => {
       const type = registry.get(typeId)
       if (!type) throw new Error(`Unknown document type "${typeId}"`)
-      const content = type.createEmpty()
+      const empty = type.createEmpty()
       openDocument(
         {
           id: nextId(),
@@ -226,10 +254,12 @@ export function WorkspaceProvider({
             stateRef.current.documents
           ),
           path: null,
-          initialContent: content,
-          savedContent: content,
+          initial: empty,
+          saved: empty,
           dirty: false,
           modifiedMs: null,
+          copyPending: false,
+          restoredDraft: null,
         },
         true
       )
@@ -253,17 +283,21 @@ export function WorkspaceProvider({
         return
       }
       try {
-        const file = await files.readTextFile(path)
+        const file = await files.readFile(path, type.maxBytes)
+        // An unsupported file throws here, before any tab exists.
+        const document = type.load(file.bytes)
         openDocument(
           {
             id: nextId(),
             typeId: type.id,
             title: basename(path),
             path,
-            initialContent: file.content,
-            savedContent: file.content,
+            initial: document,
+            saved: document,
             dirty: false,
             modifiedMs: file.modifiedMs,
+            copyPending: type.save === "copy",
+            restoredDraft: null,
           },
           true
         )
@@ -338,6 +372,14 @@ export function WorkspaceProvider({
       return next
     })
 
+  const forgetCommands = (ids: string[]) =>
+    setCommandsState((current) => {
+      if (!ids.some((id) => id in current)) return current
+      const next = { ...current }
+      for (const id of ids) delete next[id]
+      return next
+    })
+
   const clearConflict = (id: string) =>
     setConflicts((current) => {
       if (!(id in current)) return current
@@ -353,29 +395,35 @@ export function WorkspaceProvider({
       if (!stat?.exists) {
         setConflicts((c) => ({
           ...c,
-          [id]: { diskContent: null, modifiedMs: 0 },
+          [id]: { disk: null, modifiedMs: 0 },
         }))
         return
       }
-      const file = await files.readTextFile(path)
+      const typeId = stateRef.current.documents.find((d) => d.id === id)?.typeId
+      const file = await files.readFile(
+        path,
+        typeId ? registry.get(typeId)?.maxBytes : undefined
+      )
       setConflicts((c) => ({
         ...c,
-        [id]: { diskContent: file.content, modifiedMs: file.modifiedMs },
+        [id]: { disk: file.bytes, modifiedMs: file.modifiedMs },
       }))
     },
-    [files]
+    [files, registry]
   )
 
   const writeDocument = useCallback(
     async (id: string, path: string, expectedModifiedMs: number | null) => {
       const editor = editors.current.get(id)
       if (!editor) return false
-      const content = editor.serialize()
       let modifiedMs: number
+      let token: unknown
       try {
-        modifiedMs = await files.writeTextFile(
+        const serialized = await editor.serialize()
+        token = serialized.token
+        modifiedMs = await files.writeFile(
           path,
-          content,
+          serialized.bytes,
           expectedModifiedMs
         )
       } catch (error) {
@@ -390,7 +438,7 @@ export function WorkspaceProvider({
       // the event is recognized as the app's own.
       ownWrites.current.set(path, modifiedMs)
       dispatch({ type: "modified", id, modifiedMs })
-      editors.current.get(id)?.markSaved(content)
+      editors.current.get(id)?.markSaved(token)
       clearError(id)
       clearConflict(id)
       const current = folderRef.current
@@ -406,9 +454,11 @@ export function WorkspaceProvider({
       const document = stateRef.current.documents.find((d) => d.id === id)
       const type = document && registry.get(document.typeId)
       if (!document || !type) return false
-      const suggested = document.path
-        ? basename(document.path)
-        : `${document.title}${type.extensions[0] ?? ""}`
+      const suggested = !document.path
+        ? `${document.title}${type.extensions[0] ?? ""}`
+        : document.copyPending
+          ? copyName(document.path, workspaceMessages[locale].editedCopyName)
+          : basename(document.path)
       let path: string | null
       try {
         path = await files.pickSavePath(suggested)
@@ -424,14 +474,15 @@ export function WorkspaceProvider({
       }
       return saved
     },
-    [files, registry, writeDocument, rememberRecent]
+    [files, registry, writeDocument, rememberRecent, locale]
   )
 
   const save = useCallback(
     async (id: string) => {
       const document = stateRef.current.documents.find((d) => d.id === id)
       if (!document) return false
-      return document.path
+      // A type that saves a copy first never writes over its source here.
+      return document.path && !document.copyPending
         ? writeDocument(id, document.path, document.modifiedMs)
         : saveAs(id)
     },
@@ -452,9 +503,11 @@ export function WorkspaceProvider({
         await loadConflict(document.id, path)
         return
       }
-      const file = await files.readTextFile(path).catch(() => null)
+      const type = registry.get(document.typeId)
+      const file = await files.readFile(path, type?.maxBytes).catch(() => null)
       if (!file) return
-      if (file.content === editor.serialize()) {
+      const current = await editor.serialize().catch(() => null)
+      if (current && sameBytes(file.bytes, current.bytes)) {
         ownWrites.current.set(path, file.modifiedMs)
         dispatch({
           type: "modified",
@@ -465,8 +518,18 @@ export function WorkspaceProvider({
         return
       }
       if (!document.dirty) {
+        try {
+          editor.replaceContent(file.bytes)
+        } catch (error) {
+          // The new version cannot be loaded: keep the tab as it was.
+          setNotice({
+            tone: "error",
+            message: (t, describe) =>
+              t.couldNotReload(document.title, describe(error)),
+          })
+          return
+        }
         ownWrites.current.set(path, file.modifiedMs)
-        editor.replaceContent(file.content, file.content)
         dispatch({
           type: "modified",
           id: document.id,
@@ -481,12 +544,12 @@ export function WorkspaceProvider({
       setConflicts((c) => ({
         ...c,
         [document.id]: {
-          diskContent: file.content,
+          disk: file.bytes,
           modifiedMs: file.modifiedMs,
         },
       }))
     },
-    [files, loadConflict]
+    [files, registry, loadConflict]
   )
 
   const handleChangeRef = useRef(handleExternalChange)
@@ -507,57 +570,54 @@ export function WorkspaceProvider({
     void files.watchPaths(watchKey ? watchKey.split("\n") : []).catch(() => {})
   }, [files, watchKey])
 
-  const keepMine = useCallback(
-    async (id: string) => {
-      const document = stateRef.current.documents.find((d) => d.id === id)
-      const conflict = conflicts[id]
-      if (!document?.path || !conflict) return false
-      return writeDocument(
-        id,
-        document.path,
-        conflict.diskContent === null ? null : conflict.modifiedMs
-      )
-    },
-    [conflicts, writeDocument]
-  )
-
-  const takeDiskVersion = useCallback(
+  const reloadFromDisk = useCallback(
     (id: string) => {
       const conflict = conflicts[id]
       const editor = editors.current.get(id)
-      const path = stateRef.current.documents.find((d) => d.id === id)?.path
-      if (!conflict || conflict.diskContent === null || !editor) return
-      if (path) ownWrites.current.set(path, conflict.modifiedMs)
-      editor.replaceContent(conflict.diskContent, conflict.diskContent)
+      const document = stateRef.current.documents.find((d) => d.id === id)
+      if (!conflict || conflict.disk === null || !editor || !document) return
+      try {
+        editor.replaceContent(conflict.disk)
+      } catch (error) {
+        setNotice({
+          tone: "error",
+          message: (t, describe) =>
+            t.couldNotReload(document.title, describe(error)),
+        })
+        return
+      }
+      if (document.path)
+        ownWrites.current.set(document.path, conflict.modifiedMs)
       dispatch({ type: "modified", id, modifiedMs: conflict.modifiedMs })
       clearConflict(id)
     },
     [conflicts]
   )
 
-  const openDiskCopy = useCallback(
-    (id: string) => {
-      const document = stateRef.current.documents.find((d) => d.id === id)
-      const conflict = conflicts[id]
-      if (!document || !conflict || conflict.diskContent === null) return
-      openDocument(
-        {
-          id: nextId(),
-          typeId: document.typeId,
-          title: nextTitle(
-            workspaceMessages[locale].diskCopyTitle(document.title),
-            stateRef.current.documents
-          ),
-          path: null,
-          initialContent: conflict.diskContent,
-          savedContent: "",
-          dirty: conflict.diskContent !== "",
-          modifiedMs: null,
-        },
-        true
-      )
-    },
-    [conflicts, openDocument, locale]
+  // Saving to a new path resolves the conflict; the file on disk stays as
+  // the other program left it.
+  const saveCopy = useCallback((id: string) => saveAs(id), [saveAs])
+
+  const setCommands = useCallback(
+    (id: string, next: DocumentCommandState) =>
+      setCommandsState((current) => {
+        const previous = current[id]
+        const keys = Object.keys(next) as DocumentCommand[]
+        if (
+          previous &&
+          keys.length === Object.keys(previous).length &&
+          keys.every((key) => previous[key] === next[key])
+        )
+          return current
+        return { ...current, [id]: next }
+      }),
+    []
+  )
+
+  const runCommand = useCallback(
+    (id: string, command: DocumentCommand) =>
+      editors.current.get(id)?.run(command) ?? false,
+    []
   )
 
   const scheduleAutoSave = useCallback(
@@ -613,38 +673,72 @@ export function WorkspaceProvider({
     void (async () => {
       const failures: { title: string; error: unknown }[] = []
       for (const saved of previous?.documents ?? []) {
-        const type = registry.get(saved.typeId)
+        const type: DocumentType | undefined = registry.get(saved.typeId)
         if (!type) continue
         const number = /^doc-(\d+)$/.exec(saved.id)?.[1]
         if (number) sequence = Math.max(sequence, Number(number))
-        let onDisk: string | null = null
-        let modifiedMs: number | null = null
+        let onDisk: {
+          document: unknown
+          bytes: Uint8Array
+          modifiedMs: number
+        } | null = null
+        let missing = false
         if (saved.path) {
           try {
-            const file = await files.readTextFile(saved.path)
-            onDisk = file.content
-            modifiedMs = file.modifiedMs
+            const file = await files.readFile(saved.path, type.maxBytes)
+            onDisk = {
+              document: type.load(file.bytes),
+              bytes: file.bytes,
+              modifiedMs: file.modifiedMs,
+            }
           } catch (error) {
             if (saved.draft === null) {
               failures.push({ title: saved.title, error })
               continue
             }
+            missing = true
           }
         }
-        const savedContent = onDisk ?? (saved.path ? "" : type.createEmpty())
+        const savedDocument = onDisk?.document ?? type.createEmpty()
+        const changedSince =
+          saved.draft !== null &&
+          onDisk !== null &&
+          saved.baseModifiedMs !== null &&
+          onDisk.modifiedMs !== saved.baseModifiedMs
         openDocument(
           {
             id: saved.id,
             typeId: saved.typeId,
             title: saved.title,
             path: saved.path,
-            initialContent: saved.draft ?? savedContent,
-            savedContent,
-            dirty: saved.draft !== null && saved.draft !== savedContent,
-            modifiedMs,
+            initial:
+              saved.draft === null
+                ? savedDocument
+                : type.fromDraft(saved.draft, savedDocument),
+            saved: savedDocument,
+            dirty: saved.draft !== null,
+            // A draft made against an older version keeps that version, so
+            // saving it cannot silently overwrite the newer file.
+            modifiedMs: changedSince
+              ? saved.baseModifiedMs
+              : (onDisk?.modifiedMs ?? null),
+            copyPending: saved.copyPending,
+            restoredDraft: saved.draft,
           },
           false
         )
+        if (changedSince && onDisk) {
+          const disk = onDisk
+          setConflicts((c) => ({
+            ...c,
+            [saved.id]: { disk: disk.bytes, modifiedMs: disk.modifiedMs },
+          }))
+        } else if (missing && saved.path) {
+          setConflicts((c) => ({
+            ...c,
+            [saved.id]: { disk: null, modifiedMs: 0 },
+          }))
+        }
       }
       if (previous?.activeId)
         dispatch({ type: "activate", id: previous.activeId })
@@ -713,7 +807,8 @@ export function WorkspaceProvider({
       if (!path) return false
       const name = basename(path)
       try {
-        const html = await exporter.toStandaloneHtml(editor.serialize(), {
+        const { bytes } = await editor.serialize()
+        const html = await exporter.toStandaloneHtml(bytes, {
           title: document.title,
           locale,
           resolveAsset: (src) => resolveAsset(id, src),
@@ -722,7 +817,7 @@ export function WorkspaceProvider({
           setNotice({ tone: "info", message: (t) => t.exporting(name) })
           await files.exportPdf(path, html)
         } else {
-          await files.writeTextFile(path, html, null)
+          await files.writeFile(path, new TextEncoder().encode(html), null)
         }
         setNotice({ tone: "info", message: (t) => t.exported(name) })
         return true
@@ -746,9 +841,12 @@ export function WorkspaceProvider({
       notice,
       saveErrors,
       conflicts,
-      keepMine,
-      takeDiskVersion,
-      openDiskCopy,
+      keepEditing: clearConflict,
+      reloadFromDisk,
+      saveCopy,
+      commands,
+      setCommands,
+      runCommand,
       newDocument,
       openPath,
       openFileDialog,
@@ -761,6 +859,7 @@ export function WorkspaceProvider({
         dispatch({ type: "close", id })
         clearError(id)
         clearConflict(id)
+        forgetCommands([id])
       },
       closeMany: (ids) => {
         dispatch({ type: "closeMany", ids })
@@ -768,6 +867,7 @@ export function WorkspaceProvider({
           clearError(id)
           clearConflict(id)
         }
+        forgetCommands(ids)
       },
       setDirty: (id, dirty) => dispatch({ type: "dirty", id, dirty }),
       save,
@@ -797,9 +897,11 @@ export function WorkspaceProvider({
       notice,
       saveErrors,
       conflicts,
-      keepMine,
-      takeDiskVersion,
-      openDiskCopy,
+      reloadFromDisk,
+      saveCopy,
+      commands,
+      setCommands,
+      runCommand,
       newDocument,
       openPath,
       openFileDialog,
