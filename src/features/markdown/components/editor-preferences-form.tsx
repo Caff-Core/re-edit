@@ -1,6 +1,8 @@
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { AArrowDownIcon, AArrowUpIcon, TypeIcon } from "lucide-react"
+
+import { ChoiceGroup } from "@/components/molecules/choice-group"
 import { useMessages } from "@/lib/i18n"
 
 import {
@@ -26,15 +28,15 @@ const SWITCHES: {
   { key: "spellCheck", label: "spellCheck", description: "spellCheckHelp" },
 ]
 
-const FONT_SIZES: { value: EditorFontSize; label: Key }[] = [
-  { value: "small", label: "fontSmall" },
-  { value: "medium", label: "fontMedium" },
-  { value: "large", label: "fontLarge" },
-]
-
-function isFontSize(value: string | undefined): value is EditorFontSize {
-  return FONT_SIZES.some((size) => size.value === value)
-}
+const FONT_SIZES = [
+  { value: "small", label: "fontSmall", icon: AArrowDownIcon },
+  { value: "medium", label: "fontMedium", icon: TypeIcon },
+  { value: "large", label: "fontLarge", icon: AArrowUpIcon },
+] as const satisfies readonly {
+  value: EditorFontSize
+  label: Key
+  icon: unknown
+}[]
 
 /** Editor settings. Changes apply to open editors immediately. */
 export function EditorPreferencesForm() {
@@ -72,22 +74,16 @@ export function EditorPreferencesForm() {
         <span id="editor-font-size" className="text-sm font-medium">
           {t.fontSize}
         </span>
-        <ToggleGroup
-          aria-labelledby="editor-font-size"
-          variant="outline"
-          size="sm"
-          value={[preferences.fontSize]}
-          onValueChange={(next) => {
-            const [value] = next
-            if (isFontSize(value)) set({ fontSize: value })
-          }}
-        >
-          {FONT_SIZES.map((size) => (
-            <ToggleGroupItem key={size.value} value={size.value}>
-              {t[size.label]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <ChoiceGroup
+          labelledBy="editor-font-size"
+          value={preferences.fontSize}
+          onChange={(fontSize) => set({ fontSize })}
+          options={FONT_SIZES.map((size) => ({
+            value: size.value,
+            label: t[size.label],
+            icon: size.icon,
+          }))}
+        />
       </div>
     </div>
   )

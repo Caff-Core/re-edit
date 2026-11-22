@@ -9,3 +9,4 @@
 - [x] 004.04 Run the integrated acceptance walkthrough and record results for AC-007, AC-008, AC-009.
 - [x] 004.06 Add Dracula, Nord, Gruvbox Light, Gruvbox Dark, Catppuccin Latte, and Catppuccin Mocha. Check: each previews, commits, survives a restart, and passes the contrast test. Added on request.
 - [x] 004.09 Add a Neon theme (magenta, cyan, green, and yellow on a near-black blue base). Check: it previews, commits, survives a restart, and passes the contrast test. Added on request.
+- [x] 004.07 Show the motion, language, and font size choices as button groups with icons (ReUI c-button-group-3) through the `ChoiceGroup` molecule. Added on request.

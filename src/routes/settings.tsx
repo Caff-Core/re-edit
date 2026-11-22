@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { ChevronDownIcon, LanguagesIcon } from "lucide-react"
+import {
+  ActivityIcon,
+  CaseSensitiveIcon,
+  ChevronDownIcon,
+  CircleOffIcon,
+  FeatherIcon,
+  LanguagesIcon,
+  MonitorIcon,
+  WavesIcon,
+} from "lucide-react"
 
 import { LANGUAGE_NAMES, appMessages } from "@/app/messages"
 import {
@@ -7,13 +16,10 @@ import {
   isInterfaceSize,
   useInterfaceSize,
 } from "@/app/providers/interface-size-provider"
-import {
-  MOTION_PRESETS,
-  isMotionPreset,
-  useMotion,
-} from "@/app/providers/motion-provider"
+import { MOTION_PRESETS, useMotion } from "@/app/providers/motion-provider"
 import { useTheme } from "@/app/providers/theme-provider"
 import { THEMES, isTheme, type Theme } from "@/app/themes"
+import { ChoiceGroup } from "@/components/molecules/choice-group"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -25,9 +31,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { EditorPreferencesForm } from "@/features/markdown"
-import { LOCALES, isLocalePreference, useLocale, useMessages } from "@/lib/i18n"
+import { LOCALES, useLocale, useMessages } from "@/lib/i18n"
 import { useAutoSaveSetting, useTreeLinesSetting } from "@/workspace"
 
 export const Route = createFileRoute("/settings")({
@@ -56,6 +61,18 @@ const THEME_LABELS: Record<Theme, keyof AppMessages> = {
   "catppuccin-mocha": "themeCatppuccinMocha",
   neon: "themeNeon",
 }
+
+const MOTION_ICONS = {
+  none: CircleOffIcon,
+  subtle: FeatherIcon,
+  normal: WavesIcon,
+  bouncy: ActivityIcon,
+} as const
+
+const LANGUAGE_ICONS = {
+  en: CaseSensitiveIcon,
+  "zh-CN": LanguagesIcon,
+} as const
 
 const MOTION_LABELS = {
   none: "motionNone",
@@ -150,22 +167,18 @@ function Settings() {
               {t.interfaceSizeHelp}
             </p>
           </div>
-          <ToggleGroup
-            aria-labelledby="size-label"
-            variant="outline"
-            size="sm"
-            value={[String(size)]}
-            onValueChange={(next) => {
-              const value = Number(next[0])
+          <ChoiceGroup
+            labelledBy="size-label"
+            value={String(size)}
+            onChange={(next) => {
+              const value = Number(next)
               if (isInterfaceSize(value)) setSize(value)
             }}
-          >
-            {INTERFACE_SIZES.map((value) => (
-              <ToggleGroupItem key={value} value={String(value)}>
-                {`${value}%`}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+            options={INTERFACE_SIZES.map((value) => ({
+              value: String(value),
+              label: `${value}%`,
+            }))}
+          />
         </div>
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
@@ -194,22 +207,16 @@ function Settings() {
               </span>
               <p className="text-xs text-muted-foreground">{t.motionHelp}</p>
             </div>
-            <ToggleGroup
-              aria-labelledby="motion-label"
-              variant="outline"
-              size="sm"
-              value={[motion]}
-              onValueChange={(next) => {
-                const [value] = next
-                if (isMotionPreset(value)) setMotion(value)
-              }}
-            >
-              {MOTION_PRESETS.map((value) => (
-                <ToggleGroupItem key={value} value={value}>
-                  {t[MOTION_LABELS[value]]}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+            <ChoiceGroup
+              labelledBy="motion-label"
+              value={motion}
+              onChange={setMotion}
+              options={MOTION_PRESETS.map((value) => ({
+                value,
+                label: t[MOTION_LABELS[value]],
+                icon: MOTION_ICONS[value],
+              }))}
+            />
           </div>
           {reducedMotion ? (
             <p role="status" className="text-xs text-muted-foreground">
@@ -229,26 +236,20 @@ function Settings() {
           </h2>
           <p className="text-sm text-muted-foreground">{t.languageHelp}</p>
         </div>
-        <ToggleGroup
-          aria-label={t.language}
-          variant="outline"
-          size="sm"
-          value={[preference]}
-          onValueChange={(next) => {
-            const [value] = next
-            if (isLocalePreference(value)) setPreference(value)
-          }}
-        >
-          <ToggleGroupItem value="system">
-            <LanguagesIcon aria-hidden="true" />
-            {t.languageSystem}
-          </ToggleGroupItem>
-          {LOCALES.map((locale) => (
-            <ToggleGroupItem key={locale} value={locale} lang={locale}>
-              {LANGUAGE_NAMES[locale]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <ChoiceGroup
+          label={t.language}
+          value={preference}
+          onChange={setPreference}
+          options={[
+            { value: "system", label: t.languageSystem, icon: MonitorIcon },
+            ...LOCALES.map((locale) => ({
+              value: locale,
+              label: LANGUAGE_NAMES[locale],
+              icon: LANGUAGE_ICONS[locale],
+              lang: locale,
+            })),
+          ]}
+        />
       </section>
       <Separator />
       <section aria-labelledby="files-heading" className="flex flex-col gap-3">
