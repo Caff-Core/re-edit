@@ -659,3 +659,104 @@ describe("003.05: folder tree branch lines", () => {
     localStorage.removeItem(TREE_LINES_STORAGE_KEY)
   })
 })
+
+describe("tab close commands", () => {
+  async function openPlain(
+    user: ReturnType<typeof userEvent.setup>,
+    n: number
+  ) {
+    const empty = screen.queryByRole("button", { name: "New Plain text" })
+    if (empty) await user.click(empty)
+    for (let i = empty ? 1 : 0; i < n; i++) {
+      await user.click(screen.getByRole("button", { name: "File" }))
+      await user.click(
+        await screen.findByRole("menuitem", { name: /New Plain text/ })
+      )
+    }
+  }
+
+  const titles = () => screen.getAllByRole("tab").map((t) => t.textContent)
+
+  async function runOn(
+    user: ReturnType<typeof userEvent.setup>,
+    name: string | RegExp,
+    command: string
+  ) {
+    await user.pointer({ keys: "[MouseRight]", target: tab(name) })
+    await user.click(await screen.findByRole("menuitem", { name: command }))
+  }
+
+  it("closes to the right, to the left, others, and all", async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await screen.findByRole("button", { name: "New Plain text" })
+    await openPlain(user, 4)
+    expect(titles()).toEqual([
+      "Untitled text",
+      "Untitled text 2",
+      "Untitled text 3",
+      "Untitled text 4",
+    ])
+
+    await runOn(user, "Untitled text 2", "Close to the right")
+    expect(titles()).toEqual(["Untitled text", "Untitled text 2"])
+    expect(tab("Untitled text 2")).toHaveAttribute("aria-selected", "true")
+
+    await runOn(user, "Untitled text 2", "Close to the left")
+    expect(titles()).toEqual(["Untitled text 2"])
+
+    await user.pointer({ keys: "[MouseRight]", target: tab("Untitled text 2") })
+    for (const command of [
+      "Close others",
+      "Close to the left",
+      "Close to the right",
+    ]) {
+      expect(
+        await screen.findByRole("menuitem", { name: command })
+      ).toHaveAttribute("aria-disabled", "true")
+    }
+    await user.keyboard("{Escape}")
+
+    await openPlain(user, 1)
+    await runOn(user, "Untitled text 2", "Close others")
+    expect(titles()).toEqual(["Untitled text 2"])
+
+    await runOn(user, "Untitled text 2", "Close all")
+    expect(await screen.findByText("No document open")).toBeInTheDocument()
+  })
+
+  it("asks once before closing several unsaved tabs", async () => {
+    const user = userEvent.setup()
+    renderWorkspace()
+    await screen.findByRole("button", { name: "New Plain text" })
+    await openPlain(user, 3)
+    for (const title of ["Untitled text", "Untitled text 2"]) {
+      await user.click(tab(title))
+      await user.type(
+        await screen.findByRole("textbox", { name: `${title}, plain text` }),
+        "x"
+      )
+    }
+
+    await runOn(user, /^Untitled text 3/, "Close all")
+    const dialog = await screen.findByRole("alertdialog")
+    expect(
+      within(dialog).getByText("Discard changes to 2 documents?")
+    ).toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole("button", { name: "Keep editing" })
+    )
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    )
+    expect(screen.getAllByRole("tab")).toHaveLength(3)
+
+    await runOn(user, /^Untitled text 3/, "Close all")
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Discard and close",
+      })
+    )
+    expect(await screen.findByText("No document open")).toBeInTheDocument()
+  })
+})

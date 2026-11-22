@@ -81,6 +81,8 @@ export interface WorkspaceApi {
   openRecent(entry: RecentEntry): Promise<void>
   activate(id: string): void
   close(id: string): void
+  /** Close several documents at once, without asking about unsaved ones. */
+  closeMany(ids: string[]): void
   setDirty(id: string, dirty: boolean): void
   save(id: string): Promise<boolean>
   saveAs(id: string): Promise<boolean>
@@ -759,6 +761,13 @@ export function WorkspaceProvider({
         dispatch({ type: "close", id })
         clearError(id)
         clearConflict(id)
+      },
+      closeMany: (ids) => {
+        dispatch({ type: "closeMany", ids })
+        for (const id of ids) {
+          clearError(id)
+          clearConflict(id)
+        }
       },
       setDirty: (id, dirty) => dispatch({ type: "dirty", id, dirty }),
       save,
